@@ -103,18 +103,35 @@ export function initMixin(Vue: Class<Component>) {
      *  并代理每个key到vm实例中
      */
     initInjections(vm);
+    /**
+     * 初始化props, methods, data, computed, watch
+     * 数据响应式的重点
+     */
     initState(vm);
+    /**
+     * 解析组件配置项上的provide对象，将其挂载到vm.provided属性上
+     */
     initProvide(vm); // resolve provide after data/props
+    /**
+     * 调用create钩子函数
+     */
     callHook(vm, "created");
 
     /* istanbul ignore if */
     if (process.env.NODE_ENV !== "production" && config.performance && mark) {
+      /*格式化组件名*/
       vm._name = formatComponentName(vm, false);
       mark(endTag);
       measure(`vue ${vm._name} init`, startTag, endTag);
     }
 
+    /**
+     * 如果发现配置上有el选项
+     * 则自动调用$mount方法
+     *
+     */
     if (vm.$options.el) {
+      /**调用$mount, 进入挂载阶段 */
       vm.$mount(vm.$options.el);
     }
   };
@@ -143,21 +160,41 @@ export function initInternalComponent(
   }
 }
 
+/**
+ * 从组件构造函数中解析配置函数options，并合并基类选项
+ * @param {*} Ctor
+ * @returns
+ */
 export function resolveConstructorOptions(Ctor: Class<Component>) {
+  /**配置项目 */
   let options = Ctor.options;
+
   if (Ctor.super) {
+    /**
+     * 如果存在
+     * 基类递归解析基类构造函数的选项
+     **/
     const superOptions = resolveConstructorOptions(Ctor.super);
     const cachedSuperOptions = Ctor.superOptions;
     if (superOptions !== cachedSuperOptions) {
-      // super option changed,
-      // need to resolve new options.
+      /**
+       * super option changed,need to resolve new options.
+       * 说明基类构造函数选项已经发生改变，需要重新设置
+       * */
       Ctor.superOptions = superOptions;
-      // check if there are any late-modified/attached options (#4976)
+      /**
+       *  check if there are any late-modified/attached options (#4976)
+       *  检查Ctor.superOptions 上检查是否有任何后期修改/附加的选项
+       **/
       const modifiedOptions = resolveModifiedOptions(Ctor);
-      // update base extend options
+      /**
+       * update base extend options
+       * 如果存在被修改或增加的选项，则合并两个选项
+       */
       if (modifiedOptions) {
         extend(Ctor.extendOptions, modifiedOptions);
       }
+      /**选项合并，将合并结果赋值为 Ctor.options */
       options = Ctor.options = mergeOptions(superOptions, Ctor.extendOptions);
       if (options.name) {
         options.components[options.name] = Ctor;
@@ -167,10 +204,18 @@ export function resolveConstructorOptions(Ctor: Class<Component>) {
   return options;
 }
 
+/**
+ * 解析构造函数选项中后续被修改或者增加的选项
+ * @param {*} Ctor
+ * @returns
+ */
 function resolveModifiedOptions(Ctor: Class<Component>): ?Object {
   let modified;
+  /**构造函数选项 */
   const latest = Ctor.options;
+  /**密封的构造函数，备份 */
   const sealed = Ctor.sealedOptions;
+  /**对比两个选项，记录不一致的选项 */
   for (const key in latest) {
     if (latest[key] !== sealed[key]) {
       if (!modified) modified = {};
