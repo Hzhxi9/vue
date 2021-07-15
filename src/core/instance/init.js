@@ -18,9 +18,11 @@ export function initMixin(Vue: Class<Component>) {
   Vue.prototype._init = function (options?: Object) {
     /**Vue实例vm */
     const vm: Component = this;
+
     /**每个vue实例都有一个uid, 依次递增 */
     vm._uid = uid++;
 
+    /**初始化的性能度量 start */
     let startTag, endTag;
     /* istanbul ignore if */
     if (process.env.NODE_ENV !== "production" && config.performance && mark) {
@@ -53,16 +55,24 @@ export function initMixin(Vue: Class<Component>) {
        * 初始化根组件进入这里，合并Vue全局配置到根组件的局部配置
        * 比如Vue.component注册的全局组件到根实例的component选项中
        *
-       * 每个子组件的选项合并合发生在两个地方
-       * 1. Vue.component方法注册的全局组件在注册时做了选项合并
-       * 2. { component： {xx} } 方式注册的局部组件在执行编译器生成的render函数时做了选项合并，包括根组件的components配置
-       *
+       * 每个子组件的选项合并合发生在三个地方
+       * 1. Vue.component方法注册的全局组件在注册时做了选项合并，合并的Vue内置的全局组件和用户自己的全局组件，最终都会放到全局的Components中
+       * 2. { component： {xx} } 方式注册的局部组件在执行编译器生成的render函数时做了选项合并，包括根组件的components配置，会合并全局配置项到组件局部配置项中
+       * 3. 这里的根情况
        */
       vm.$options = mergeOptions(
         resolveConstructorOptions(vm.constructor),
         options || {},
         vm
       );
+      /**
+       * Vue.component('comp', {template: '<div>Comp</div>'})
+       * new Vue({el: '#app', data: {msg: 'hello'}})
+       *
+       * 合并全局组件 ==>
+       * Vue.component('comp', {template: '<div>Comp</div>'})
+       * new Vue({el: '#app', data: {msg: 'hello'}, component: {localComp, globalComp}})
+       */
     }
     /* istanbul ignore else */
     if (process.env.NODE_ENV !== "production") {
@@ -75,6 +85,9 @@ export function initMixin(Vue: Class<Component>) {
     }
     // expose real self
     vm._self = vm;
+
+    /**整个初始化的部分也是核心 */
+
     /**
      * 初始化生命周期
      * 即组件实例关系属性，比如$parent、$children、$root、$refs等
@@ -82,14 +95,16 @@ export function initMixin(Vue: Class<Component>) {
     initLifecycle(vm);
     /**
      * 初始化自定义事件
+     *
      * 在<comp @click="handleClick" />上注册的事件
      * 监听不是父组件而是子组件本身
      * 也就是说事件的派发和监听者是子组件本身和父组件无关
+     * 谁触发谁监听
      */
     initEvents(vm);
     /**
      * 初始化render渲染
-     * 解析组件的slot信息，得到vm.$slot，处理渲染函数，得到vm.$createElement方法，即h函数
+     * 解析组件的slot信息，得到vm.$slot，处理渲染函数，定义this._c,得到vm.$createElement方法，即h函数
      */
     initRender(vm);
     /**
@@ -98,9 +113,12 @@ export function initMixin(Vue: Class<Component>) {
     callHook(vm, "beforeCreate");
     /**
      *  resolve injections before data/props
+     *
      *  初始化组件的inject配置项，得到result[key]=val形式的配置对象
      *  然后对结果数据进行响应式处理
      *  并代理每个key到vm实例中
+     *
+     *  祖代组件向上查找，找到匹配到的值
      */
     initInjections(vm);
     /**
@@ -109,14 +127,16 @@ export function initMixin(Vue: Class<Component>) {
      */
     initState(vm);
     /**
+     * 处理provide选项
      * 解析组件配置项上的provide对象，将其挂载到vm.provided属性上
      */
     initProvide(vm); // resolve provide after data/props
     /**
-     * 调用create钩子函数
+     * 调用 create 生命周期钩子函数
      */
     callHook(vm, "created");
 
+    /**初始化的性能度量 end 结束初始化 */
     /* istanbul ignore if */
     if (process.env.NODE_ENV !== "production" && config.performance && mark) {
       /*格式化组件名*/
@@ -129,6 +149,8 @@ export function initMixin(Vue: Class<Component>) {
      * 如果发现配置上有el选项
      * 则自动调用$mount方法
      *
+     * 没有则要手动调用$mount
+     *
      */
     if (vm.$options.el) {
       /**调用$mount, 进入挂载阶段 */
@@ -137,11 +159,14 @@ export function initMixin(Vue: Class<Component>) {
   };
 }
 
+/**性能优化， 打平配置对象上的属性， 减少运行时原型链的动态查找，提高执行效率 */
 export function initInternalComponent(
   vm: Component,
   options: InternalComponentOptions
 ) {
+  /**基于构造函数上配置对象创建vm.$options */
   const opts = (vm.$options = Object.create(vm.constructor.options));
+
   // doing this because it's faster than dynamic enumeration.
   // 这样做是因为它比动态枚举更快。
   const parentVnode = options._parentVnode;
@@ -154,6 +179,7 @@ export function initInternalComponent(
   opts._renderChildren = vnodeComponentOptions.children;
   opts._componentTag = vnodeComponentOptions.tag;
 
+  /**有render函数，将其赋值到vm.$options */
   if (options.render) {
     opts.render = options.render;
     opts.staticRenderFns = options.staticRenderFns;
@@ -166,7 +192,10 @@ export function initInternalComponent(
  * @returns
  */
 export function resolveConstructorOptions(Ctor: Class<Component>) {
-  /**配置项目 */
+  /**
+   * 配置项目
+   * 从实例构造函数上获取options
+   */
   let options = Ctor.options;
 
   if (Ctor.super) {
@@ -175,7 +204,9 @@ export function resolveConstructorOptions(Ctor: Class<Component>) {
      * 基类递归解析基类构造函数的选项
      **/
     const superOptions = resolveConstructorOptions(Ctor.super);
-    const cachedSuperOptions = Ctor.superOptions;
+
+    const cachedSuperOptions = Ctor.superOptions; /**缓存基类的配置选项 */
+
     if (superOptions !== cachedSuperOptions) {
       /**
        * super option changed,need to resolve new options.
@@ -184,7 +215,8 @@ export function resolveConstructorOptions(Ctor: Class<Component>) {
       Ctor.superOptions = superOptions;
       /**
        *  check if there are any late-modified/attached options (#4976)
-       *  检查Ctor.superOptions 上检查是否有任何后期修改/附加的选项
+       *  检查Ctor.superOptions 上检查是否有任何后期修改/附加的选项，
+       *  找到更改的选项
        **/
       const modifiedOptions = resolveModifiedOptions(Ctor);
       /**
@@ -192,6 +224,7 @@ export function resolveConstructorOptions(Ctor: Class<Component>) {
        * 如果存在被修改或增加的选项，则合并两个选项
        */
       if (modifiedOptions) {
+        /**将更改的选项和extend选项合并 */
         extend(Ctor.extendOptions, modifiedOptions);
       }
       /**选项合并，将合并结果赋值为 Ctor.options */
