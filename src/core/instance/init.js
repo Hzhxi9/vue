@@ -50,7 +50,6 @@ export function initMixin(Vue: Class<Component>) {
        * 将组件配置对象上的一些深层次属性放到vm.$options中，提高代码执行效率
        */
       initInternalComponent(vm, options);
-      console.log("===initInternalComponent===", options);
     } else {
       /**
        * 初始化根组件进入这里，合并Vue全局配置到根组件的局部配置
