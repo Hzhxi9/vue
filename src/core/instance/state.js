@@ -36,14 +36,18 @@ const sharedPropertyDefinition = {
   set: noop,
 };
 
-/**设置代理， 将key代理到target上 */
+/**设置代理， 将key代理到vue实例上 */
 export function proxy(target: Object, sourceKey: string, key: string) {
   sharedPropertyDefinition.get = function proxyGetter() {
+    /**
+     * this._props.key
+     */
     return this[sourceKey][key];
   };
   sharedPropertyDefinition.set = function proxySetter(val) {
     this[sourceKey][key] = val;
   };
+  /**拦截对this.key的访问 */
   Object.defineProperty(target, key, sharedPropertyDefinition);
 }
 
@@ -57,7 +61,7 @@ export function initState(vm: Component) {
   vm._watchers = [];
   const opts = vm.$options;
 
-  /**处理props，为props对象的每个属性设置了响应式，并将其代理到vm实例上 */
+  /**处理props，为props对象的每个属性设置了响应式，并将其代理到vm实例上，支持this.propKey的方式访问 */
   if (opts.props) initProps(vm, opts.props);
 
   /**处理methods对象， 校验每个属性的值是否为函数，和props属性比对进行判重处理，最后得到vm[key]=methods[key]  */
@@ -98,6 +102,9 @@ export function initState(vm: Component) {
    * 非要说有区别，那也是在使用方式上的区别， 简单来说
    * 1. watch： 适用于数据变化时执行异步或者开销较大的操作时使用， 即需要长时间等待的操作可以放在watch中
    * 2. computed: 其中可以使用异步方法，但是没有任何意义，所以computed更适合做一些同步计算
+   *
+   * computed默认懒执行，且不可更改，但是watcher可配置
+   * 使用场景不同
    */
 }
 
@@ -178,6 +185,9 @@ function initData(vm: Component) {
    * 得到data对象
    */
   let data = vm.$options.data;
+  /**
+   * 保证后续处理的data是一个对象
+   */
   data = vm._data = typeof data === "function" ? getData(data, vm) : data || {};
   if (!isPlainObject(data)) {
     data = {};
@@ -217,6 +227,10 @@ function initData(vm: Component) {
           vm
         );
     } else if (!isReserved(key)) {
+      /**
+       * 代理data中的属性到vue实例上
+       * 支持通过this.key的方式访问
+       */
       proxy(vm, `_data`, key);
     }
   }
@@ -267,7 +281,10 @@ function initComputed(vm: Component, computed: Object) {
 
     if (!isSSR) {
       // create internal watcher for the computed property.
-      /**为computed属性创建watcher实例 */
+      /**
+       * 为computed属性创建watcher实例
+       * 所以computed就是通过watcher来实现的
+       **/
       watchers[key] = new Watcher(
         vm,
         getter || noop,
@@ -347,7 +364,11 @@ export function defineComputed(
       );
     };
   }
-  /**拦截对target.key的访问和设置 */
+  /**
+   * 拦截对target.key的访问和设置
+   * 将computed配置项中的key代理到vue实例上
+   * 支持通过this.computedKey的方式去访问Computed中的属性
+   **/
   Object.defineProperty(target, key, sharedPropertyDefinition);
 }
 
@@ -380,6 +401,13 @@ function createComputedGetter(key) {
        * 因为上一次执行watcher.update方法会讲watcher.dirty重新置为false
        * 待页面更新后，watcher.update方法会将watcher.dirty重新置为true
        * 供下次页面更新时重新计算computed.key的结果
+       *
+       * 执行watcher.evaluate方法
+       * 执行computed.key的值（函数）得到函数的执行结果，赋值给watcher.value
+       * 将watcher.dirty 赋值为false
+       *
+       * computed的缓存实现原理
+       *
        */
       if (watcher.dirty) {
         watcher.evaluate();
@@ -411,7 +439,10 @@ function createGetterInvoker(fn) {
 function initMethods(vm: Component, methods: Object) {
   /**获取props配置项 */
   const props = vm.$options.props;
-  /**遍历methods对象 */
+  /**
+   * 判重
+   * 遍历methods对象，methods 中的key不能和props中key重复
+   **/
   for (const key in methods) {
     if (process.env.NODE_ENV !== "production") {
       if (typeof methods[key] !== "function") {
@@ -433,6 +464,10 @@ function initMethods(vm: Component, methods: Object) {
         );
       }
     }
+    /**
+     * 将methods中的所有方法赋值到vue实例上
+     * 支持通过this.methodKey的方式访问定义的方法
+     */
     vm[key] =
       typeof methods[key] !== "function" ? noop : bind(methods[key], vm);
   }
@@ -550,10 +585,10 @@ export function stateMixin(Vue: Class<Component>) {
    * 3. 创建watcher实例
    * 4. 如果设置了immediate，则立即执行了一次cb
    * 5. 返回了unwatch
-   * @param {*} expOrFn 
-   * @param {*} cb 
-   * @param {*} options 
-   * @returns 
+   * @param {*} expOrFn
+   * @param {*} cb
+   * @param {*} options
+   * @returns
    */
 
   Vue.prototype.$watch = function (
