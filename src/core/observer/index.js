@@ -188,9 +188,10 @@ export function defineReactive(
   const dep = new Dep();
 
   /**
-   * 获取getter和setter，获取val值
+   * 获取属性描述符，getter和setter，获取val值
    */
   const property = Object.getOwnPropertyDescriptor(obj, key);
+
   if (property && property.configurable === false) {
     return;
   }
@@ -202,10 +203,12 @@ export function defineReactive(
   if ((!getter || setter) && arguments.length === 2) {
     val = obj[key];
   }
+
   /**
-   * 递归调用，处理val，即obj[key]的值为对象的情况，保证对象中的所有key都被观察
+   * 递归调用，处理val，即obj[key]的值为对象的情况，处理嵌套对象，保证对象中的所有key都被观察
    */
   let childOb = !shallow && observe(val);
+
   /**
    * 响应式核心
    * 拦截对obj[key]的访问和设置
@@ -213,17 +216,24 @@ export function defineReactive(
   Object.defineProperty(obj, key, {
     enumerable: true,
     configurable: true,
+
     /**get 拦截对obj[key]的读取操作， 进行依赖收集已经返回最新的值 */
     get: function reactiveGetter() {
-      const value = getter ? getter.call(obj) : val;
       /**
+       * 拦截obj.key
+       **/
+      const value = getter ? getter.call(obj) : val;
+
+      /**
+       * 依赖收集
+       *
        * Dep.target 为Dep类的一个静态属性，值为watcher，在实例化Watcher时会被设置
        * 实例化Watcher时会执行new Watcher时传递的回调函数(computed除外，因为它懒执行)
        * 而回调函数中如果有vm.key的读取行为，则会触发这里的读取拦截，进行依赖收集
        * 回调函数执行完以后有会将Dep.target设置为null，避免这里重复收集依赖
        */
-      if (Dep.target) {
-        /**依赖收集， 在dep中添加watcher，也在watcher中添加dep */
+      if (Dep.target /**watcher */) {
+        /**读取时进行依赖收集， 在dep中添加watcher，也在watcher中添加dep */
         dep.depend();
         /**childOb表示对象中嵌套对象的观察者对象，如果存在也对其进行依赖收集 */
         if (childOb) {
@@ -238,8 +248,10 @@ export function defineReactive(
       }
       return value;
     },
+
     /** 拦截obj.key = newVal的操作 */
     set: function reactiveSetter(newVal) {
+      /**首先获取老值 */
       const value = getter ? getter.call(obj) : val;
       /* eslint-disable no-self-compare */
       if (newVal === value || (newVal !== newVal && value !== value)) {

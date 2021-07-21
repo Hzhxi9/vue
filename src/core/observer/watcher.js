@@ -62,6 +62,7 @@ export default class Watcher {
       this.lazy = !!options.lazy;
       this.sync = !!options.sync;
       this.before = options.before;
+      console.log(this.dirty, this.lazy, "====");
     } else {
       this.deep = this.user = this.lazy = this.sync = false;
     }
@@ -76,6 +77,7 @@ export default class Watcher {
     this.expression =
       process.env.NODE_ENV !== "production" ? expOrFn.toString() : "";
     // parse expression for getter
+
     if (typeof expOrFn === "function") {
       this.getter = expOrFn;
     } else {

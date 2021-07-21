@@ -29,9 +29,7 @@ methodsToPatch.forEach(function (method) {
   // cache original method
   const original = arrayProto[method];
 
-  /**
-   * 分别在arrayMethods对象上定义那七个方法
-   */
+  /**分别在arrayMethods对象上定义那七个方法 */
   def(arrayMethods, method, function mutator(...args) {
     /**先执行原生的数组方法 */
     const result = original.apply(this, args);

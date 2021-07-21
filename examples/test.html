@@ -11,6 +11,8 @@
 <body>
   <div id="app">
     {{msg}}
+    {{message}}
+    <div @click="add">{{count}}</div>
     <!-- <comp /> -->
   </div>
 </body>
@@ -22,7 +24,18 @@
   new Vue({
     el: '#app',
     data: {
-      msg: 'hello vue'
+      msg: 'hello vue',
+      count: 1
+    },
+    computed: {
+      message() {
+        return '1111'
+      }
+    },
+    methods: {
+      add() {
+        this.count++
+      }
     }
   })
 
