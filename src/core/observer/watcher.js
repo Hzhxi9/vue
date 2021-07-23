@@ -73,8 +73,12 @@ export default class Watcher {
     this.id = ++uid; // uid for batching
     this.active = true;
     this.dirty = this.lazy; // for lazy watchers
+    /**记录自己订阅了那些Dep */
     this.deps = [];
+
     this.newDeps = [];
+
+    /**记录当前Watcher已经订阅了这个dep */
     this.depIds = new Set();
     this.newDepIds = new Set();
     this.expression =
@@ -141,9 +145,14 @@ export default class Watcher {
 
   /**
    * Add a dependency to this directive.
+   *
+   *
+   *
    * 两件事：
    *   1、添加 dep 给自己（watcher）
    *   2、添加自己（watcher）到 dep
+   *
+   *
    */
   addDep(dep: Dep) {
     // 判重，如果 dep 已经存在则不重复添加
@@ -153,9 +162,25 @@ export default class Watcher {
       this.newDepIds.add(id);
       // 添加 dep
       this.newDeps.push(dep);
-      // 避免在 dep 中重复添加 watcher，this.depIds 的设置在 cleanupDeps 方法中
+      /**
+       * 避免在 dep 中重复添加 watcher，this.depIds 的设置在 cleanupDeps 方法中
+       *
+       * watcher读取value时，会触发收集依赖的逻辑
+       * 当依赖发生变化时，会通知Watcher重新读取最新的数据
+       *
+       * 没有这个判断，就会发现每当数据发生了变化，Watcher都会读取最新的数据
+       * 而读数据就会再次收集依赖，这就会导致Dep中的依赖有重复。
+       *
+       * 当数据发生了变化时，会同时通知多个Watcher
+       *
+       */
       if (!this.depIds.has(id)) {
-        /**将watcher自己放到dep中，来一个双向收集 */
+        /**
+         * 在Watcher中记录自己订阅过那些Dep
+         * 当Watcher不想继续订阅这些Dep时，循环自己记录的订阅列表来通知他们（Dep）将自己从他们（Dep）的依赖列表中移除掉
+         *
+         * 将watcher自己放到dep中，来一个双向收集
+         **/
         dep.addSub(this);
       }
     }
@@ -269,6 +294,7 @@ export default class Watcher {
 
   /**
    * Remove self from all dependencies' subscriber list.
+   * 从所有依赖项的Dep列表中将自己移除
    */
   teardown() {
     if (this.active) {
