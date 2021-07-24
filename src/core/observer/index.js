@@ -281,6 +281,11 @@ export function defineReactive(
  * Set a property on an object. Adds the new property and
  * triggers change notification if the property doesn't
  * already exist.
+ *
+ * 用法
+ * 在object上设置一个属性， 如果object是响应式的，vue会保证属性被创建后也是响应式的，并且触发视图更新
+ *
+ * @param target 不能是Vue实例或者Vue实例的根数据对象
  */
 export function set(target: Array<any> | Object, key: any, val: any): any {
   if (
@@ -291,16 +296,43 @@ export function set(target: Array<any> | Object, key: any, val: any): any {
       `Cannot set reactive property on undefined, null, or primitive value: ${(target: any)}`
     );
   }
+  /**
+   * target是数组的情况， 并且key是有效值
+   */
   if (Array.isArray(target) && isValidArrayIndex(key)) {
+    /**
+     * 先设置length，
+     * 当传递的索引值大于当前数组的length,就需要将target的length等于索引值
+     */
     target.length = Math.max(target.length, key);
+
+    /**
+     * 通过splice方法val设置到target中的指定的位置（参数中提供的索引值的位置）
+     * 当使用splice方法时，把val设置到target中的时候，数组拦截器会检测到target发生变化，并且会自动将新增的val转换为响应式
+     */
     target.splice(key, 1, val);
     return val;
   }
+
+  /**key已经存在于target中的情况 */
   if (key in target && !(key in Object.prototype)) {
+    /**
+     * 由于key已经存在于target中，所以其实这个key已经被侦测了变化
+     * 这种情况属性修改数据，直接用key和val改数据
+     */
     target[key] = val;
     return val;
   }
+
+  /**新增属性的情况 */
+
+  /**先获取target的__ob__属性 */
   const ob = (target: any).__ob__;
+
+  /**
+   * 使用target._isVue判断target是不是vue实例
+   * 使用ob.vmCount来判断是不是根数据对象，即this.$data
+   */
   if (target._isVue || (ob && ob.vmCount)) {
     process.env.NODE_ENV !== "production" &&
       warn(
@@ -309,11 +341,16 @@ export function set(target: Array<any> | Object, key: any, val: any): any {
       );
     return val;
   }
+
+  /**不是响应式数据，修改后直接返回 */
   if (!ob) {
     target[key] = val;
     return val;
   }
+
+  /**使用defineReactive将新属性转换为getter/setter */
   defineReactive(ob.value, key, val);
+  /**通知更新 */
   ob.dep.notify();
   return val;
 }
@@ -335,6 +372,7 @@ export function del(target: Array<any> | Object, key: any) {
     return;
   }
   const ob = (target: any).__ob__;
+  /**target是vue实例或者ob.vmCounts数量大于1(target是根数据)直接返回 */
   if (target._isVue || (ob && ob.vmCount)) {
     process.env.NODE_ENV !== "production" &&
       warn(
@@ -343,10 +381,12 @@ export function del(target: Array<any> | Object, key: any) {
       );
     return;
   }
+  /**如果key不是target自身的属性，则终止程序继续执行 */
   if (!hasOwn(target, key)) {
     return;
   }
   delete target[key];
+  /**不是响应式直接返回 */
   if (!ob) {
     return;
   }
