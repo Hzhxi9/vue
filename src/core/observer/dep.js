@@ -43,6 +43,9 @@ export default class Dep {
   /**通知 dep 中的所有 watcher，执行 watcher.update() 方法 */
   notify() {
     // stabilize the subscriber list first
+    /**
+     * 存放dep收集的watcher
+     */
     const subs = this.subs.slice();
     if (process.env.NODE_ENV !== "production" && !config.async) {
       // subs aren't sorted in scheduler if not running async
