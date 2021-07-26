@@ -102,6 +102,7 @@ function flushSchedulerQueue() {
   for (index = 0; index < queue.length; index++) {
     watcher = queue[index];
     if (watcher.before) {
+      /**执行before钩子 */
       watcher.before();
     }
 
