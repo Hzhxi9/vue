@@ -415,6 +415,9 @@ export function mergeOptions(
    **/
   if (!child._base) {
     if (child.extends) {
+      /**
+       * 跟mixin很类似， 让你基于一个组件去扩展另外一个，不需要使用Vue.extend
+       **/
       parent = mergeOptions(parent, child.extends, vm);
     }
     if (child.mixins) {
@@ -448,6 +451,7 @@ export function mergeOptions(
    * @param {*} key
    */
   function mergeField(key) {
+    /**选线合并策略方法 */
     const strat = strats[key] || defaultStrat;
     /**值为如果 childVal 存在则优先使用 childVal，否则使用 parentVal */
     options[key] = strat(parent[key], child[key], vm, key);

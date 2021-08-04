@@ -298,6 +298,7 @@ export function set(target: Array<any> | Object, key: any, val: any): any {
   }
   /**
    * target是数组的情况， 并且key是有效值
+   * Vue.set(arr, idx, value)
    */
   if (Array.isArray(target) && isValidArrayIndex(key)) {
     /**
@@ -350,7 +351,7 @@ export function set(target: Array<any> | Object, key: any, val: any): any {
 
   /**使用defineReactive将新属性转换为getter/setter */
   defineReactive(ob.value, key, val);
-  /**通知更新 */
+  /**依赖通知更新 */
   ob.dep.notify();
   return val;
 }
