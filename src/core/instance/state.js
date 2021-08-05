@@ -581,10 +581,18 @@ export function stateMixin(Vue: Class<Component>) {
   // flow somehow has problems with directly declared definition object
   // when using Object.defineProperty, so we have to procedurally build up
   // the object here.
+
+  /**
+   * 设置$data属性
+   */
   const dataDef = {};
   dataDef.get = function () {
     return this._data;
   };
+
+  /**
+   * 设置$props属性
+   */
   const propsDef = {};
   propsDef.get = function () {
     return this._props;
@@ -601,6 +609,10 @@ export function stateMixin(Vue: Class<Component>) {
       warn(`$props is readonly.`, this);
     };
   }
+  /**
+   * 将data属性和props属性挂载到Vue.prototype对象上
+   * 这样在程序中就可以 this.$data和 this.$props 来访问data和props对象
+   */
   Object.defineProperty(Vue.prototype, "$data", dataDef);
   Object.defineProperty(Vue.prototype, "$props", propsDef);
 
@@ -614,10 +626,10 @@ export function stateMixin(Vue: Class<Component>) {
    * 3. 创建watcher实例
    * 4. 如果设置了immediate，则立即执行了一次cb
    * 5. 返回了unwatch
-   * @param {*} expOrFn
-   * @param {*} cb
-   * @param {*} options
-   * @returns
+   * @param {*} expOrFn key
+   * @param {*} cb 回调函数
+   * @param {*} options 配置项，用户直接调用this.$watch时可能回传递一个配置项
+   * @returns 返回unwatch 函数， 用于取消watcher监听
    */
 
   Vue.prototype.$watch = function (

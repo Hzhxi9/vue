@@ -20,11 +20,13 @@ export function initExtend(Vue: GlobalAPI) {
    * constructors" for prototypal inheritance and cache them.
    */
   Vue.cid = 0;
+  /**组件的唯一标识 */
   let cid = 1;
 
   /**
    * Class inheritance
    * 扩展Vue子类， 预设一些配置项
+   * 创建子类继承Vue父类， 便于属性扩展
    */
   Vue.extend = function (extendOptions: Object): Function {
     extendOptions = extendOptions || {};
@@ -47,18 +49,21 @@ export function initExtend(Vue: GlobalAPI) {
       validateComponentName(name);
     }
 
-    /**重点，定义Vue子类， 和Vue构造函数一样 */
+    /**
+     * 重点，定义Vue子类， 和Vue构造函数一样
+     * 创建子类的构造函数，并且调用初始化方法 
+     **/
     const Sub = function VueComponent(options) {
-      /**初始化 */
+      /**调用Vue初始化方法 */
       this._init(options);
     };
     /**
      * 设置子类的原型对象
      * 通过原型继承的方式继承Vue
      */
-    Sub.prototype = Object.create(Super.prototype);
+    Sub.prototype = Object.create(Super.prototype); // 子类原型指向父类
     /**设置构造函数 */
-    Sub.prototype.constructor = Sub;
+    Sub.prototype.constructor = Sub; // constructor 指向自己
     Sub.cid = cid++;
     /**
      * 选项合并， 合并Vue的配置项到自己的配置项上来
