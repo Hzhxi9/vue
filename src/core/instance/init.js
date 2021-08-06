@@ -101,6 +101,8 @@ export function initMixin(Vue: Class<Component>) {
      * 监听不是父组件而是子组件本身
      * 也就是说事件的派发和监听者是子组件本身和父组件无关
      * 谁触发谁监听
+     *
+     * this.$emit('click') this.$emit('click', function handClick(){})
      */
     initEvents(vm);
     /**

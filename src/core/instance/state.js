@@ -583,7 +583,7 @@ export function stateMixin(Vue: Class<Component>) {
   // the object here.
 
   /**
-   * 设置$data属性
+   * 设置$data属性，定义get方法，访问this._data
    */
   const dataDef = {};
   dataDef.get = function () {
@@ -597,6 +597,13 @@ export function stateMixin(Vue: Class<Component>) {
   propsDef.get = function () {
     return this._props;
   };
+
+  /**
+   * 异常提示
+   * 不能直接赋值整个data对象
+   * 不能 this.$data = {} or new Value
+   * 只能 this.$data.newProperty = new Value
+   */
   if (process.env.NODE_ENV !== "production") {
     dataDef.set = function () {
       warn(
@@ -605,10 +612,15 @@ export function stateMixin(Vue: Class<Component>) {
         this
       );
     };
+
+    /**
+     * 设置props是只读的
+     */
     propsDef.set = function () {
       warn(`$props is readonly.`, this);
     };
   }
+
   /**
    * 将data属性和props属性挂载到Vue.prototype对象上
    * 这样在程序中就可以 this.$data和 this.$props 来访问data和props对象
@@ -616,6 +628,9 @@ export function stateMixin(Vue: Class<Component>) {
   Object.defineProperty(Vue.prototype, "$data", dataDef);
   Object.defineProperty(Vue.prototype, "$props", propsDef);
 
+  /**
+   * this.$set && this.$delete
+   */
   Vue.prototype.$set = set;
   Vue.prototype.$delete = del;
 

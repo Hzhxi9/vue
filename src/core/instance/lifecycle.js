@@ -56,6 +56,11 @@ export function initLifecycle(vm: Component) {
 }
 
 export function lifecycleMixin(Vue: Class<Component>) {
+  /**
+   * 组件初次渲染和更新的入口
+   * @param {*} vnode
+   * @param {*} hydrating
+   */
   Vue.prototype._update = function (vnode: VNode, hydrating?: boolean) {
     const vm: Component = this;
     const prevEl = vm.$el;
@@ -64,11 +69,17 @@ export function lifecycleMixin(Vue: Class<Component>) {
     vm._vnode = vnode;
     // Vue.prototype.__patch__ is injected in entry points
     // based on the rendering backend used.
-    if (!prevVnode) {
-      // initial render
+    if (!prevVnode /**旧VNode */) {
+      /**
+       * initial render 初次渲染，即初始化页面时走这里
+       * patch 阶段， patch、diff算法
+       */
       vm.$el = vm.__patch__(vm.$el, vnode, hydrating, false /* removeOnly */);
     } else {
-      // updates
+      /**
+       * updates 更新阶段，响应式数据更新时，即更新页面时走这里
+       *
+       */
       vm.$el = vm.__patch__(prevVnode, vnode);
     }
     restoreActiveInstance();
@@ -87,6 +98,10 @@ export function lifecycleMixin(Vue: Class<Component>) {
     // updated in a parent's updated hook.
   };
 
+  /**
+   * 迫使 Vue 实例重新渲染。注意它仅仅影响实例本身和插入插槽内容的子组件，而不是所有子组件。
+   * 只影响当前组件实例， 以及组件内的插槽内容
+   */
   Vue.prototype.$forceUpdate = function () {
     const vm: Component = this;
     if (vm._watcher) {
@@ -94,19 +109,35 @@ export function lifecycleMixin(Vue: Class<Component>) {
     }
   };
 
+  /**
+   * 完全销毁一个实例。清理它与其它实例的连接，解绑它的全部指令及事件监听器。
+   * 触发 beforeDestroy 和 destroyed 的钩子。
+   * @returns
+   */
   Vue.prototype.$destroy = function () {
     const vm: Component = this;
+
     if (vm._isBeingDestroyed) {
+      /**已经被销毁了，直接结束 */
       return;
     }
+
+    /**销毁阶段开始 */
     callHook(vm, "beforeDestroy");
+
     vm._isBeingDestroyed = true;
     // remove self from parent
     const parent = vm.$parent;
+
+    /**从自己从父组件的children属性中移除 */
     if (parent && !parent._isBeingDestroyed && !vm.$options.abstract) {
       remove(parent.$children, vm);
     }
-    // teardown watchers
+
+    /**
+     * teardown watchers
+     * watcher移除
+     **/
     if (vm._watcher) {
       vm._watcher.teardown();
     }
@@ -122,10 +153,17 @@ export function lifecycleMixin(Vue: Class<Component>) {
     // call the last hook...
     vm._isDestroyed = true;
     // invoke destroy hooks on current rendered tree
+    /**
+     * 更新页面
+     * 将整个页面渲染为空
+     */
     vm.__patch__(vm._vnode, null);
     // fire destroyed hook
     callHook(vm, "destroyed");
     // turn off all instance listeners.
+    /**
+     * 移除当前组件所有事件监听器
+     */
     vm.$off();
     // remove __vue__ reference
     if (vm.$el) {
@@ -133,6 +171,7 @@ export function lifecycleMixin(Vue: Class<Component>) {
     }
     // release circular reference (#6759)
     if (vm.$vnode) {
+      /**断开与父组件的联系 */
       vm.$vnode.parent = null;
     }
   };
