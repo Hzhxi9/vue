@@ -351,6 +351,7 @@ export function set(target: Array<any> | Object, key: any, val: any): any {
 
   /**使用defineReactive将新属性转换为getter/setter */
   defineReactive(ob.value, key, val);
+
   /**依赖通知更新 */
   ob.dep.notify();
   return val;

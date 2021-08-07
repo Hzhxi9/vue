@@ -58,6 +58,7 @@ export function initLifecycle(vm: Component) {
 export function lifecycleMixin(Vue: Class<Component>) {
   /**
    * 组件初次渲染和更新的入口
+   * 负责更新页面，页面首次渲染和后续更新的入口位置，也是patch的入口位置
    * @param {*} vnode
    * @param {*} hydrating
    */
@@ -122,10 +123,11 @@ export function lifecycleMixin(Vue: Class<Component>) {
       return;
     }
 
-    /**销毁阶段开始 */
+    /**销毁阶段开始，调用 beforeDestroy 钩子 */
     callHook(vm, "beforeDestroy");
 
     vm._isBeingDestroyed = true;
+
     // remove self from parent
     const parent = vm.$parent;
 
@@ -136,11 +138,12 @@ export function lifecycleMixin(Vue: Class<Component>) {
 
     /**
      * teardown watchers
-     * watcher移除
+     * watcher移除， 移除依赖监听
      **/
     if (vm._watcher) {
       vm._watcher.teardown();
     }
+
     let i = vm._watchers.length;
     while (i--) {
       vm._watchers[i].teardown();
@@ -155,16 +158,22 @@ export function lifecycleMixin(Vue: Class<Component>) {
     // invoke destroy hooks on current rendered tree
     /**
      * 更新页面
-     * 将整个页面渲染为空
+     * 将整个页面渲染为空， 销毁节点
      */
     vm.__patch__(vm._vnode, null);
-    // fire destroyed hook
-    callHook(vm, "destroyed");
-    // turn off all instance listeners.
+
     /**
+     * fire destroyed hook
+     * 调用 destroyed 钩子
+     */
+    callHook(vm, "destroyed");
+
+    /**
+     * turn off all instance listeners.
      * 移除当前组件所有事件监听器
      */
     vm.$off();
+
     // remove __vue__ reference
     if (vm.$el) {
       vm.$el.__vue__ = null;
