@@ -79,7 +79,7 @@ export function eventsMixin(Vue: Class<Component>) {
 
     /**
      * 事件为数组的情况
-     *
+     * event 时有多个事件名组成的数组， 则遍历这些事件，一次递归调用$on
      * this.$on([event1, event2, ...], function(){})
      */
     if (Array.isArray(event)) {
@@ -90,7 +90,7 @@ export function eventsMixin(Vue: Class<Component>) {
     } else {
       /**
        * 比如如果存在vm._event['custom-click'] = []
-       *
+       * 将注册的事件和回调以键值对的形式存储到 vm._event 对象中vm._event = { eventName: [fn1, ...] }
        * 一个事件可以设置多个响应函数
        * this.$on('custom-click', cb1)
        * this.$on('custom-click', cb2)
@@ -103,6 +103,10 @@ export function eventsMixin(Vue: Class<Component>) {
       /**
        * 使用方式
        * <comp @hook:mounted="handleHookMounted" />
+       * 
+       * hookEvent，提供了从外部为组件实例注入生命周期方法的机会
+       * 比如从组件外部为组件的mounted方法注入额外的逻辑
+       * 该能力结合callhook 方法实现
        */
       if (hookRE.test(event)) {
         /**
