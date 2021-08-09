@@ -24,6 +24,10 @@ import {
 } from 'compiler/parser/index'
 
 function preTransformNode (el: ASTElement, options: CompilerOptions) {
+  /**
+   * 处理包含v-model指令的input标签 
+   * <input v-model="value" />
+   **/
   if (el.tag === 'input') {
     const map = el.attrsMap
     if (!map['v-model']) {
@@ -39,11 +43,18 @@ function preTransformNode (el: ASTElement, options: CompilerOptions) {
     }
 
     if (typeBinding) {
+      /**
+       * 得到指定属性 v-if表达式的值
+       * <input v-model="value" v-if="xx" />
+       */
       const ifCondition = getAndRemoveAttr(el, 'v-if', true)
+      /**拼接&&xx */
       const ifConditionExtra = ifCondition ? `&&(${ifCondition})` : ``
+      /**v-else指令 */
       const hasElse = getAndRemoveAttr(el, 'v-else', true) != null
+      /**v-else-if */
       const elseIfCondition = getAndRemoveAttr(el, 'v-else-if', true)
-      // 1. checkbox
+      // 1. checkbox <input type="checkbox" />
       const branch0 = cloneASTElement(el)
       // process for on the main node
       processFor(branch0)
@@ -57,6 +68,7 @@ function preTransformNode (el: ASTElement, options: CompilerOptions) {
       })
       // 2. add radio else-if condition
       const branch1 = cloneASTElement(el)
+      /**处理v-for */
       getAndRemoveAttr(branch1, 'v-for', true)
       addRawAttr(branch1, 'type', 'radio')
       processElement(branch1, options)

@@ -63,12 +63,19 @@ export function createASTElement(
   parent: ASTElement | void
 ): ASTElement {
   return {
+    /**标签类型 */
     type: 1,
+    /**标签名 */
     tag,
+    /**属性数组 */
     attrsList: attrs,
+    /**将属性数组变成对象 {attrName: attrValue} */
     attrsMap: makeAttrsMap(attrs),
+    /**定义一个空对象，最后的结果和attrsMap一样 */
     rawAttrsMap: {},
+    /**标记当前父元素 */
     parent,
+    /**存放所有子元素 */
     children: [],
   };
 }
@@ -121,8 +128,9 @@ export function parse(
   const whitespaceOption = options.whitespace;
   /**最终return出去的ast对象 */
   let root;
-  let currentParent;
   /**记录当前元素的父元素 */
+  let currentParent;
+
   let inVPre = false;
   let inPre = false;
   let warned = false;
@@ -236,25 +244,38 @@ export function parse(
     shouldDecodeNewlinesForHref: options.shouldDecodeNewlinesForHref,
     shouldKeepComment: options.comments,
     outputSourceRange: options.outputSourceRange,
+    /**
+     *
+     * @param {*} tag 标签名
+     * @param {*} attrs 属性数组 [{name: attrName, value: attrValue, start, end},...]
+     * @param {*} unary 是否为自闭好标签
+     * @param {*} start 标签的开始索引位置
+     * @param {*} end 结束索引位置
+     */
     start(tag, attrs, unary, start, end) {
       // check namespace.
       // inherit parent ns if there is one
+      /**检查命名空间 */
       const ns =
         (currentParent && currentParent.ns) || platformGetTagNamespace(tag);
 
       // handle IE svg bug
       /* istanbul ignore if */
+      /**IE处理 */
       if (isIE && ns === "svg") {
         attrs = guardIESVGBug(attrs);
       }
 
+      /**生成当前标签的ast对象 */
       let element: ASTElement = createASTElement(tag, attrs, currentParent);
       if (ns) {
+        /**添加命名空间 */
         element.ns = ns;
       }
 
       if (process.env.NODE_ENV !== "production") {
         if (options.outputSourceRange) {
+          /**添加索引 */
           element.start = start;
           element.end = end;
           element.rawAttrsMap = element.attrsList.reduce((cumulated, attr) => {
@@ -264,6 +285,7 @@ export function parse(
         }
         attrs.forEach((attr) => {
           if (invalidAttributeRE.test(attr.name)) {
+            /**对属性名做有效性校验 */
             warn(
               `Invalid dynamic argument expression: attribute names cannot contain ` +
                 `spaces, quotes, <, >, / or =.`,

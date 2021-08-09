@@ -29,6 +29,7 @@ const comment = /^<!\--/;
 const conditionalComment = /^<!\[/;
 
 // Special Elements (can contain anything)
+
 export const isPlainTextElement = makeMap("script,style,textarea", true);
 const reCache = {};
 
@@ -61,9 +62,11 @@ export function parseHTML(html, options) {
   const canBeLeftOpenTag = options.canBeLeftOpenTag || no;
   let index = 0;
   let last, lastTag;
+  /**循环遍历html字符串 */
   while (html) {
     last = html;
     // Make sure we're not in a plaintext content element like script/style
+    /**不在script,style,textarea内 */
     if (!lastTag || !isPlainTextElement(lastTag)) {
       let textEnd = html.indexOf("<");
       if (textEnd === 0) {
@@ -76,6 +79,7 @@ export function parseHTML(html, options) {
           const commentEnd = html.indexOf("-->");
 
           if (commentEnd >= 0) {
+            /**应该保留注释 */
             if (options.shouldKeepComment) {
               options.comment(
                 html.substring(4, commentEnd),
@@ -83,12 +87,14 @@ export function parseHTML(html, options) {
                 index + commentEnd + 3
               );
             }
+            /**剪切整个注释内容 */
             advance(commentEnd + 3);
             continue;
           }
         }
 
         // http://en.wikipedia.org/wiki/Conditional_comment#Downlevel-revealed_conditional_comment
+        /**处理条件注释  */
         if (conditionalComment.test(html)) {
           const conditionalEnd = html.indexOf("]>");
 
@@ -99,13 +105,17 @@ export function parseHTML(html, options) {
         }
 
         // Doctype:
+        /**处理<!Doctype html> */
         const doctypeMatch = html.match(doctype);
         if (doctypeMatch) {
           advance(doctypeMatch[0].length);
           continue;
         }
 
+        /**重点 */
+
         // End tag:
+        /**处理结束标签 */
         const endTagMatch = html.match(endTag);
         if (endTagMatch) {
           const curIndex = index;
@@ -115,8 +125,13 @@ export function parseHTML(html, options) {
         }
 
         // Start tag:
+        /**
+         * 处理开始标签
+         * { tagName, attrs: [], start }
+         **/
         const startTagMatch = parseStartTag();
         if (startTagMatch) {
+          /**进一步处理这个对象 */
           handleStartTag(startTagMatch);
           if (shouldIgnoreFirstNewline(startTagMatch.tagName, html)) {
             advance(1);
@@ -207,13 +222,18 @@ export function parseHTML(html, options) {
   }
 
   function parseStartTag() {
+    /**<start></start> */
     const start = html.match(startTagOpen);
     if (start) {
       const match = {
+        /**标签名 */
         tagName: start[1],
+        /**属性数组 */
         attrs: [],
+        /**开始的位置 */
         start: index,
       };
+      /**裁剪整个开始标签 */
       advance(start[0].length);
       let end, attr;
       while (
@@ -236,8 +256,10 @@ export function parseHTML(html, options) {
 
   function handleStartTag(match) {
     const tagName = match.tagName;
+    /**是否自闭合标签 */
     const unarySlash = match.unarySlash;
 
+    /**处理p标签 */
     if (expectHTML) {
       if (lastTag === "p" && isNonPhrasingTag(tagName)) {
         parseEndTag(lastTag);
@@ -247,8 +269,13 @@ export function parseHTML(html, options) {
       }
     }
 
+    /**判断是否为自闭合标签 */
     const unary = isUnaryTag(tagName) || !!unarySlash;
 
+    /**
+     * 处理attrs
+     * 得到[{name: attrName, value: attrValue, start, end}, ...]
+     **/
     const l = match.attrs.length;
     const attrs = new Array(l);
     for (let i = 0; i < l; i++) {
@@ -269,6 +296,7 @@ export function parseHTML(html, options) {
     }
 
     if (!unary) {
+      /**非自闭合标签 */
       stack.push({
         tag: tagName,
         lowerCasedTag: tagName.toLowerCase(),
