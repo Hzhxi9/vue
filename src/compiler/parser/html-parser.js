@@ -55,20 +55,35 @@ function decodeAttr(value, shouldDecodeNewlines) {
   return value.replace(re, (match) => decodingMap[match]);
 }
 
+/**
+ * 通过循环遍历html模板字符串，依次处理其中的各个标签，以及标签上的属性
+ * @param {*} html html模板
+ * @param {*} options 配置项
+ */
 export function parseHTML(html, options) {
   const stack = [];
   const expectHTML = options.expectHTML;
+  /**是否为自闭合标签 */
   const isUnaryTag = options.isUnaryTag || no;
+  /**是否可以只有开始标签 */
   const canBeLeftOpenTag = options.canBeLeftOpenTag || no;
+  /**记录当前在原始html字符串中的开始位置 */
   let index = 0;
   let last, lastTag;
   /**循环遍历html字符串 */
   while (html) {
     last = html;
     // Make sure we're not in a plaintext content element like script/style
-    /**不在script,style,textarea内 */
+    /**确保不是在 script、style、textarea 这样的纯文本元素中 */
     if (!lastTag || !isPlainTextElement(lastTag)) {
+      /**找出第一个<字符 */
       let textEnd = html.indexOf("<");
+
+      /**
+       * textEnd === 0说明在开头找到
+       * 分别处理可能找到的注释标签，条件注释标签，Doctype，开始标签，结束标签
+       * 每处理完一种情况，就会截取（continue）循环，并且重置html字符串，将处理过的标签截取，下一次循环处理剩余的html字符串模板
+       */
       if (textEnd === 0) {
         // Comment:
         /**
@@ -76,62 +91,77 @@ export function parseHTML(html, options) {
          * <!-- xx -->
          */
         if (comment.test(html)) {
+          /**注释标签的结束索引 */
           const commentEnd = html.indexOf("-->");
 
           if (commentEnd >= 0) {
-            /**应该保留注释 */
+            /**是否应该保留注释 */
             if (options.shouldKeepComment) {
+              /**得到：注释内容、注释的开始索引、结束索引 */
               options.comment(
                 html.substring(4, commentEnd),
                 index,
                 index + commentEnd + 3
               );
             }
-            /**剪切整个注释内容 */
+            /**
+             * 剪切整个注释内容
+             * 调整html和index变量
+             **/
             advance(commentEnd + 3);
             continue;
           }
         }
 
         // http://en.wikipedia.org/wiki/Conditional_comment#Downlevel-revealed_conditional_comment
-        /**处理条件注释  */
+        /**处理条件注释 <!-- [if IE]>  */
         if (conditionalComment.test(html)) {
+          /**找到结束索引 */
           const conditionalEnd = html.indexOf("]>");
 
           if (conditionalEnd >= 0) {
+            /**调整html和index变量 */
             advance(conditionalEnd + 2);
             continue;
           }
         }
 
         // Doctype:
-        /**处理<!Doctype html> */
+        /**处理Doctype： <!Doctype html> */
         const doctypeMatch = html.match(doctype);
         if (doctypeMatch) {
           advance(doctypeMatch[0].length);
           continue;
         }
 
-        /**重点 */
+        /**
+         * 重点
+         * 处理开始标签和结束标签是这整个函数中的核型部分，其它的不用管
+         * 这两部分就是在构造 element ast
+         **/
 
         // End tag:
-        /**处理结束标签 */
+        /**处理结束标签， 比如</div> */
         const endTagMatch = html.match(endTag);
         if (endTagMatch) {
           const curIndex = index;
           advance(endTagMatch[0].length);
+          /**处理结束标签 */
           parseEndTag(endTagMatch[1], curIndex, index);
           continue;
         }
 
         // Start tag:
         /**
-         * 处理开始标签
-         * { tagName, attrs: [], start }
+         * 处理开始标签  <div id="app">
+         * startTagMatch = { tagName: 'div', attrs: [[xx], ...], start: index }
          **/
         const startTagMatch = parseStartTag();
         if (startTagMatch) {
-          /**进一步处理这个对象 */
+          /**
+           * 进一步处理上一步得到对象，并最后调用options.start方法
+           * 真正解析工作都是在这个start方法中做的
+           */
           handleStartTag(startTagMatch);
           if (shouldIgnoreFirstNewline(startTagMatch.tagName, html)) {
             advance(1);
@@ -142,7 +172,20 @@ export function parseHTML(html, options) {
 
       let text, rest, next;
       if (textEnd >= 0) {
+        /**
+         * 能走到这里，说明虽然在html匹配到到了<xx, 但是这不属于上述几种情况
+         * 他就只是一个普通的一段文本：<我是文本
+         * 于是从html中找到下一个<, 直到<xx是上述几种情况的标签，则结束
+         * 在这整个过程一直在调整textEnd的值，作为html中下一个有效标签的开始位置
+         */
+
+        /**截取html字符串中textEnd之后的内容， rest = <xx */
         rest = html.slice(textEnd);
+
+        /**
+         * 这个while循环就是处理<xx 之后的纯文本的情况
+         * 截取文本内容，并找到有效标签的开始位置(textEnd)
+         */
         while (
           !endTag.test(rest) &&
           !startTagOpen.test(rest) &&
@@ -150,11 +193,16 @@ export function parseHTML(html, options) {
           !conditionalComment.test(rest)
         ) {
           // < in plain text, be forgiving and treat it as text
+          /**认为< 后面的内容为纯文本，然后在这些纯文本中再找到< */
           next = rest.indexOf("<", 1);
+          /**如果没有找到<， 则直接结束循环 */
           if (next < 0) break;
+          /**走到这儿说明在后续的字符串中找到了 <，索引位置为 textEnd */
           textEnd += next;
+          /**截取 html 字符串模版 textEnd 之后的内容赋值给 rest，继续判断之后的字符串是否存在标签 */
           rest = html.slice(textEnd);
         }
+        /**走到这里，说明遍历结束，有两种情况，一种是 < 之后就是一段纯文本，要不就是在后面找到了有效标签，截取文本 */
         text = html.substring(0, textEnd);
       }
 
@@ -216,26 +264,46 @@ export function parseHTML(html, options) {
   // Clean up any remaining tags
   parseEndTag();
 
+  /**
+   * 重置html， html = 从索引位置开始的向后的所有字符串
+   * index为html在原始的模板字符串中的开始索引，也是下一次该处理的字符的开始位置
+   * @param {*} n 索引
+   */
   function advance(n) {
     index += n;
     html = html.substring(n);
   }
 
+  /**
+   * 解析开始标签，<div id="app">
+   * @returns {tagName: 'div', attr:[[xx],...], start: index}
+   */
   function parseStartTag() {
     /**<start></start> */
     const start = html.match(startTagOpen);
     if (start) {
+      /**处理结果 */
       const match = {
         /**标签名 */
         tagName: start[1],
         /**属性数组 */
         attrs: [],
-        /**开始的位置 */
+        /**标签开始的位置 */
         start: index,
       };
-      /**裁剪整个开始标签 */
+      /**
+       * 裁剪整个开始标签
+       * 调整html和index
+       * 比如:
+       * html = " id='app'>"
+       * index = 此时的索引
+       * start = '<div'
+       **/
       advance(start[0].length);
       let end, attr;
+      /**
+       * 处理开始标签内的各个属性，并将这些属性放到match.attrs数组中
+       */
       while (
         !(end = html.match(startTagClose)) &&
         (attr = html.match(dynamicArgAttribute) || html.match(attribute))
@@ -245,6 +313,7 @@ export function parseHTML(html, options) {
         attr.end = index;
         match.attrs.push(attr);
       }
+      /**开始标签的结束，end=">"或者end=' />' */
       if (end) {
         match.unarySlash = end[1];
         advance(end[0].length);
@@ -254,9 +323,19 @@ export function parseHTML(html, options) {
     }
   }
 
+  /**
+   * 进一步处理开始标签的解析结果 -- match对象
+   *   处理属性match.attrs，如果不是自闭合标签，则将标签信息放到stack数组，
+   *   待将来处理到它的闭合标签时再将其弹出stack，表示该标签处理完毕，这是标签的所有信息都在element ast对象上了
+   *   接下来调用options.start方法处理标签，并根据标签信息生成element ast
+   *   以及处理开始标签上的属性和指令，最后将element ast放入stack数组
+   *
+   * @param {*} match {tagName: 'div', attr:[[xx],...], start: index}
+   */
   function handleStartTag(match) {
+    /**标签名字 */
     const tagName = match.tagName;
-    /**是否自闭合标签 */
+    /**可能是一个自闭合标签 /> */
     const unarySlash = match.unarySlash;
 
     /**处理p标签 */
@@ -269,34 +348,44 @@ export function parseHTML(html, options) {
       }
     }
 
-    /**判断是否为自闭合标签 */
+    /**判断是否为自闭合标签 <hr /> */
     const unary = isUnaryTag(tagName) || !!unarySlash;
 
     /**
-     * 处理attrs
+     * 处理attrs 得到 attrs = [{ name: attrName, value: attrVal, start: xx, end: xx }, ...]
      * 得到[{name: attrName, value: attrValue, start, end}, ...]
      **/
     const l = match.attrs.length;
     const attrs = new Array(l);
     for (let i = 0; i < l; i++) {
       const args = match.attrs[i];
+      // 比如：args[3] => 'id'，args[4] => '='，args[5] => 'app'
       const value = args[3] || args[4] || args[5] || "";
       const shouldDecodeNewlines =
         tagName === "a" && args[1] === "href"
           ? options.shouldDecodeNewlinesForHref
           : options.shouldDecodeNewlines;
+      /** attrs[i] = { id: 'app' } */
       attrs[i] = {
         name: args[1],
         value: decodeAttr(value, shouldDecodeNewlines),
       };
+      /**非生产环境，记录属性的开始和结束索引 */
       if (process.env.NODE_ENV !== "production" && options.outputSourceRange) {
         attrs[i].start = args.start + args[0].match(/^\s*/).length;
         attrs[i].end = args.end;
       }
     }
 
+    /**
+     *  如果不是自闭合标签，则将标签信息放到 stack 数组中，待将来处理到它的闭合标签时再将其弹出 stack
+     *  如果是自闭合标签，则标签信息就没必要进入 stack 了，直接处理众多属性，将他们都设置到 element ast 对象上，就没有处理 结束标签的那一步了，这一步在处理开始标签的过程中就进行了
+     **/
     if (!unary) {
-      /**非自闭合标签 */
+      /**
+       * 非自闭合标签
+       * 将标签信息放到 stack 数组中，{ tag, lowerCasedTag, attrs, start, end }
+       **/
       stack.push({
         tag: tagName,
         lowerCasedTag: tagName.toLowerCase(),
@@ -304,9 +393,19 @@ export function parseHTML(html, options) {
         start: match.start,
         end: match.end,
       });
+      /**标识当前标签的结束标签为 tagName */
       lastTag = tagName;
     }
 
+    /**
+     * 调用 start 方法，主要做了以下 6 件事情:
+     *  1、创建 AST 对象
+     *  2、处理存在 v-model 指令的 input 标签，分别处理 input 为 checkbox、radio、其它的情况
+     *  3、处理标签上的众多指令，比如 v-pre、v-for、v-if、v-once
+     *  4、如果根节点 root 不存在则设置当前元素为根节点
+     *  5、如果当前元素为非自闭合标签则将自己 push 到 stack 数组，并记录 currentParent，在接下来处理子元素时用来告诉子元素自己的父节点是谁
+     *  6、如果当前元素为自闭合标签，则表示该标签要处理结束了，让自己和父元素产生关系，以及设置自己的子元素
+     */
     if (options.start) {
       options.start(tagName, attrs, unary, match.start, match.end);
     }

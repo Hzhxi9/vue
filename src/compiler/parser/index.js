@@ -82,6 +82,10 @@ export function createASTElement(
 
 /**
  * Convert HTML string to AST.
+ * 将html字符串转换为ast
+ * @param {*} template
+ * @param {*} options
+ * @returns
  */
 export function parse(
   template: string,
@@ -91,11 +95,11 @@ export function parse(
   warn = options.warn || baseWarn;
   /**平台的pre标签 */
   platformIsPreTag = options.isPreTag || no;
-  /**必须使用prop的属性 */
+  /**必须使用prop进行绑定的属性 */
   platformMustUseProp = options.mustUseProp || no;
-  /**命名空间 */
+  /**获取标签的命名空间 */
   platformGetTagNamespace = options.getTagNamespace || no;
-  /**是否是保留标签 */
+  /**是否是保留标签（html + svg） */
   const isReservedTag = options.isReservedTag || no;
   /**是否是一个组件 */
   maybeComponent = (el: ASTElement) =>
@@ -109,6 +113,8 @@ export function parse(
   /**
    * 三个数组,数组中每个元素都是一个函数
    * 这些函数分别是style、class、model这三个模块中导出的对应函数
+   * 分别获取options。modules下的class、model、style 三个模块中的transformNode、preTransformNode、postTransformNode方法
+   * 负责处理元素节点上的class、style、v-model
    * platform/web/compiler/modules/class
    * platform/web/compiler/modules/style
    * platform/web/compiler/modules/model
@@ -117,7 +123,7 @@ export function parse(
   preTransforms = pluckModuleFunction(options.modules, "preTransformNode");
   postTransforms = pluckModuleFunction(options.modules, "postTransformNode");
 
-  /**界定符 */
+  /**界定符,比如{{}}*/
   delimiters = options.delimiters;
 
   /**解析的中间结果都放在这里 */
@@ -235,6 +241,9 @@ export function parse(
     }
   }
 
+  /**
+   * 解析html模板字符串，处理所有标签以及标签上的属性
+   */
   parseHTML(template, {
     warn,
     expectHTML: options.expectHTML,
@@ -468,6 +477,7 @@ export function parse(
       }
     },
   });
+  /**返回生成的ast对象 */
   return root;
 }
 
