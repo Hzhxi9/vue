@@ -994,7 +994,11 @@ function processSlotContent(el) {
     }
   }
 }
-
+/**
+ * 解析binding， 得到插槽名称以及是否为动态插槽
+ * @param {*} binding  
+ * @returns { name: 插槽名称, dynamic: 是否为动态插槽 }
+ */
 function getSlotName(binding) {
   let name = binding.name.replace(slotRE, "");
   if (!name) {
@@ -1011,11 +1015,18 @@ function getSlotName(binding) {
       { name: `"${name}"`, dynamic: false };
 }
 
-// handle <slot/> outlets
+
+/**
+ * handle <slot/> outlets 处理自闭和slot标签
+ * 得到插槽名称, el.slotName
+ * @param {*} el 
+ */
 function processSlotOutlet(el) {
   if (el.tag === "slot") {
+    /**得到插槽名称 */
     el.slotName = getBindingAttr(el, "name");
     if (process.env.NODE_ENV !== "production" && el.key) {
+      /**显示提示， 不要在slot标签上使用key属性 */
       warn(
         `\`key\` does not work on <slot> because slots are abstract outlets ` +
           `and can possibly expand into multiple elements. ` +
@@ -1026,11 +1037,22 @@ function processSlotOutlet(el) {
   }
 }
 
+/**
+ * 处理动态组件,<component :is="compName" />
+ * 得到el.component = compName
+ * @param {*} el 
+ */
 function processComponent(el) {
   let binding;
+  /**解析is属性，得到属性值， 即组件名称，el.component = compName */
   if ((binding = getBindingAttr(el, "is"))) {
     el.component = binding;
   }
+  /**
+   * <component :is="compName" inline-template />
+   * 组件上存在inline-template 属性，进行标记：el.inlineTemplate = true
+   * 表示组件开始和结束标签内的内容作为组件模板出现， 而不是作为插槽分发，方便定义组件模板
+   */
   if (getAndRemoveAttr(el, "inline-template") != null) {
     el.inlineTemplate = true;
   }
