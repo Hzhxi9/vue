@@ -64,39 +64,69 @@ function preTransformNode(el: ASTElement, options: CompilerOptions) {
       /**v-else-if */
       const elseIfCondition = getAndRemoveAttr(el, "v-else-if", true);
 
+      /**
+       * 克隆出一个新的el对象，分别处理input为CheckBox、radio、或其他情况
+       * 具体是那种情况通过el.ifCondition条件来判断
+       */
+
       // 1. checkbox <input type="checkbox" />
       const branch0 = cloneASTElement(el);
 
       /**
        * process for on the main node
-       * 处理v-for = "item in arr"
+       * 处理v-for = "item in arr" 得到 branch0.for = arr, branch0.alias = item
        */
       processFor(branch0);
       /**
-       *
+       * 在 branch0.attrsMap 和 branch0.attrsList 对象中添加 type 属性
        */
       addRawAttr(branch0, "type", "checkbox");
+      /**
+       * 分别处理元素节点的key、ref、插槽、自闭合slot标签、动态组件、class、style、v-bind、v-on、其他指令、和一些元素属性
+       */
       processElement(branch0, options);
+      /**
+       * 标记当前对象已经被处理过了
+       */
       branch0.processed = true; // prevent it from double-processed
+      /**
+       * 得到 true&&test or false&&test，标记当前 input 是否为 checkbox
+       */
       branch0.if = `(${typeBinding})==='checkbox'` + ifConditionExtra;
+      /**
+       * 在 branch0.ifConfitions 数组中放入 { exp, block } 对象
+       */
       addIfCondition(branch0, {
         exp: branch0.if,
         block: branch0,
       });
 
       // 2. add radio else-if condition  checkbox <input type="radio" />
+      /**
+       * 克隆一个新的ast对象
+       */
       const branch1 = cloneASTElement(el);
       /**处理v-for */
       getAndRemoveAttr(branch1, "v-for", true);
-      /**添加type属性 */
+      /**
+       * 添加type属性
+       * 在 branch1.attrsMap 和 branch1.attrsList 对象中添加 type 属性
+       */
       addRawAttr(branch1, "type", "radio");
+      /**
+       * 分别处理元素节点的 key、ref、插槽、自闭合的 slot 标签、动态组件、class、style、v-bind、v-on、其它指令和一些原生属性
+       */
       processElement(branch1, options);
+      /**
+       * 在 branch0.ifConfitions 数组中放入 { exp, block } 对象
+       */
       addIfCondition(branch0, {
+        // 标记当前 input 是否为 radio
         exp: `(${typeBinding})==='radio'` + ifConditionExtra,
         block: branch1,
       });
 
-      // 3. other
+      // 3. other input 为其它的情况
       const branch2 = cloneASTElement(el);
       getAndRemoveAttr(branch2, "v-for", true);
       addRawAttr(branch2, ":type", typeBinding);
@@ -106,6 +136,7 @@ function preTransformNode(el: ASTElement, options: CompilerOptions) {
         block: branch2,
       });
 
+      /**给 branch0 设置 else 或 elseif 条件 */
       if (hasElse) {
         branch0.else = true;
       } else if (elseIfCondition) {
@@ -117,6 +148,11 @@ function preTransformNode(el: ASTElement, options: CompilerOptions) {
   }
 }
 
+/**
+ * 克隆一个新的ast对象
+ * @param {*} el
+ * @returns
+ */
 function cloneASTElement(el) {
   return createASTElement(el.tag, el.attrsList.slice(), el.parent);
 }
