@@ -57,13 +57,20 @@ let platformMustUseProp;
 let platformGetTagNamespace;
 let maybeComponent;
 
+/**
+ * 为指定元素创建 AST 对象
+ * @param {*} tag  tag 标签名
+ * @param {*} attrs  attrs 属性数组，[{ name: attrName, value: attrVal, start, end }, ...]
+ * @param {*} parent  父元素
+ * @returns  { type: 1, tag, attrsList, attrsMap: makeAttrsMap(attrs), rawAttrsMap: {}, parent, children: []}
+ */
 export function createASTElement(
   tag: string,
   attrs: Array<ASTAttr>,
   parent: ASTElement | void
 ): ASTElement {
   return {
-    /**标签类型 */
+    /**节点类型 */
     type: 1,
     /**标签名 */
     tag,
@@ -71,7 +78,7 @@ export function createASTElement(
     attrsList: attrs,
     /**将属性数组变成对象 {attrName: attrValue} */
     attrsMap: makeAttrsMap(attrs),
-    /**定义一个空对象，最后的结果和attrsMap一样 */
+    /**定义一个空对象为原始属性对象，最后的结果和attrsMap一样 */
     rawAttrsMap: {},
     /**标记当前父元素 */
     parent,
@@ -257,14 +264,16 @@ export function parse(
      *
      * @param {*} tag 标签名
      * @param {*} attrs 属性数组 [{name: attrName, value: attrValue, start, end},...]
-     * @param {*} unary 是否为自闭好标签
+     * @param {*} unary 是否为自闭合标签
      * @param {*} start 标签的开始索引位置
      * @param {*} end 结束索引位置
      */
     start(tag, attrs, unary, start, end) {
       // check namespace.
       // inherit parent ns if there is one
-      /**检查命名空间 */
+      /**
+       * 检查命名空间，如果存在，则继承父命名空间
+       **/
       const ns =
         (currentParent && currentParent.ns) || platformGetTagNamespace(tag);
 
@@ -283,10 +292,12 @@ export function parse(
       }
 
       if (process.env.NODE_ENV !== "production") {
+        /**这段在非生产环境下会走，在 ast 对象上添加 一些 属性，比如 start、end */
         if (options.outputSourceRange) {
           /**添加索引 */
           element.start = start;
           element.end = end;
+          /**处理rawAttrsMap，将属性数组解析成 { attrName: { name: attrName, value: attrVal, start, end }, ... } 形式的对象*/
           element.rawAttrsMap = element.attrsList.reduce((cumulated, attr) => {
             cumulated[attr.name] = attr;
             return cumulated;
@@ -294,7 +305,10 @@ export function parse(
         }
         attrs.forEach((attr) => {
           if (invalidAttributeRE.test(attr.name)) {
-            /**对属性名做有效性校验 */
+            /**
+             * 对属性名做有效性校验
+             * 验证属性是否有效，比如属性名不能包含: spaces, quotes, <, >, / or =.
+             **/
             warn(
               `Invalid dynamic argument expression: attribute names cannot contain ` +
                 `spaces, quotes, <, >, / or =.`,
@@ -306,7 +320,9 @@ export function parse(
           }
         });
       }
-
+      /**
+       * 非服务端渲染的情况下，模版中不应该出现 style、script 标签
+       */
       if (isForbiddenTag(element) && !isServerRendering()) {
         element.forbidden = true;
         process.env.NODE_ENV !== "production" &&
@@ -320,39 +336,79 @@ export function parse(
       }
 
       // apply pre-transforms
+      /**
+       * 为 element 对象分别执行 class、style、model 模块中的 preTransforms 方法
+       * 不过 web 平台只有 model 模块有 preTransforms 方法
+       * 用来处理存在 v-model 的 input 标签，但没处理 v-model 属性
+       * 分别处理了 input 为 checkbox、radio 和 其它的情况
+       * input 具体是哪种情况由 el.ifConditions 中的条件来判断
+       * <input v-mode="test" :type="checkbox or radio or other(比如 text)" />
+       */
       for (let i = 0; i < preTransforms.length; i++) {
         element = preTransforms[i](element, options) || element;
       }
 
       if (!inVPre) {
+        /**表示 element 是否存在 v-pre 指令，存在则设置 element.pre = true */
         processPre(element);
         if (element.pre) {
+          /**存在 v-pre 指令，则设置 inVPre 为 true */
           inVPre = true;
         }
       }
+      /**如果 pre 标签，则设置 inPre 为 true */
       if (platformIsPreTag(element.tag)) {
         inPre = true;
       }
       if (inVPre) {
+        /**
+         * 说明标签上存在 v-pre 指令，这样的节点只会渲染一次，将节点上的属性都设置到 el.attrs 数组对象中，作为静态属性，数据更新时不会渲染这部分内容
+         * 设置 el.attrs 数组对象，每个元素都是一个属性对象 { name: attrName, value: attrVal, start, end }处。
+         */
         processRawAttrs(element);
       } else if (!element.processed) {
         // structural directives
+
+        /**
+         * 处理 v-for 属性，得到 element.for = 可迭代对象 element.alias = 别名
+         */
         processFor(element);
+        /**
+         * 处理 v-if、v-else-if、v-else
+         * 得到 element.if = "exp"，element.elseif = exp, element.else = true
+         * v-if 属性会额外在 element.ifConditions 数组中添加 { exp, block } 对象
+         */
         processIf(element);
+        /**
+         * 处理 v-once 指令，得到 element.once = true
+         **/
         processOnce(element);
       }
-
+      /**如果 root 不存在，则表示当前处理的元素为第一个元素，即组件的 根 元素 */
       if (!root) {
         root = element;
+        /**检查根元素，对根元素有一些限制，比如：不能使用 slot 和 template 作为根元素，也不能在有状态组件的根元素上使用 v-for 指令 */
         if (process.env.NODE_ENV !== "production") {
           checkRootConstraints(root);
         }
       }
 
       if (!unary) {
+        /**非自闭合标签，通过 currentParent 记录当前元素，下一个元素在处理的时候，就知道自己的父元素是谁 */
         currentParent = element;
+        /**
+         * 然后将 element push 到 stack 数组，将来处理到当前元素的闭合标签时再拿出来
+         * 将当前标签的 ast 对象 push 到 stack 数组中，这里需要注意，在调用 options.start 方法
+         * 之前也发生过一次 push 操作，那个 push 进来的是当前标签的一个基本配置信息
+         */
         stack.push(element);
       } else {
+        /**
+         * 说明当前元素为自闭合标签，主要做了 3 件事：
+         *  1、如果元素没有被处理过，即 el.processed 为 false，则调用 processElement 方法处理节点上的众多属性
+         *  2、让自己和父元素产生关系，将自己放到父元素的 children 数组中，并设置自己的 parent 属性为 currentParent
+         *  3、设置自己的子元素，将自己所有非插槽的子元素放到自己的 children 数组中
+         */
         closeElement(element);
       }
     },
@@ -1003,7 +1059,11 @@ function parseModifiers(name: string): Object | void {
     return ret;
   }
 }
-
+/**
+ * 生成attr对象
+ * @param {*} attrs 属性数组
+ * @returns { attrName: attrVal, ... }
+ */
 function makeAttrsMap(attrs: Array<Object>): Object {
   const map = {};
   for (let i = 0, l = attrs.length; i < l; i++) {
