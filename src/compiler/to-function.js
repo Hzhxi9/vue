@@ -21,6 +21,12 @@ function createFunction(code, errors) {
 export function createCompileToFunctionFn(compile: Function): Function {
   const cache = Object.create(null);
 
+  /**
+   *  1. 执行编译函数，得到编译结果 => compiled
+   *  2. 处理编译期间产生的error和tip， 分别输出到控制台
+   *  3. 将编译得到字符串代码通过new Function(codeStr)转换成可执行函数
+   *  4. 缓存编译结果
+   */
   return function compileToFunctions(
     /**字符串模板 */
     template: string,
@@ -41,6 +47,10 @@ export function createCompileToFunctionFn(compile: Function): Function {
         new Function("return 1");
       } catch (e) {
         if (e.toString().match(/unsafe-eval|CSP/)) {
+          /**
+           * 看起来你在一个 CSP 不安全的环境中使用完整版的 Vue.js，模版编译器不能工作在这样的环境中。
+           * 考虑放宽策略限制或者预编译你的 template 为 render 函数
+           */
           warn(
             "It seems you are using the standalone build of Vue.js in an " +
               "environment with Content Security Policy that prohibits unsafe-eval. " +
@@ -55,6 +65,7 @@ export function createCompileToFunctionFn(compile: Function): Function {
     /**
      * check cache
      * 从缓存中获取编译结果
+     * 如果有缓存，则跳过编译，直接从缓存中获取上次编译的结果
      */
     const key = options.delimiters
       ? String(options.delimiters) + template
@@ -70,7 +81,7 @@ export function createCompileToFunctionFn(compile: Function): Function {
 
     /**
      * check compilation errors/tips
-     * 检查编译过程中产生的所有error和tips
+     * 检查编译过程中产生的所有error和tips， 分别输出到控制台
      */
     if (process.env.NODE_ENV !== "production") {
       if (compiled.errors && compiled.errors.length) {
@@ -103,6 +114,7 @@ export function createCompileToFunctionFn(compile: Function): Function {
     /**
      * turn code into functions
      * 编译结果，compiled.render => 字符串，是一个可执行函数的字符串
+     * 转换编译得到的字符串代码， 通过new Function(code) 实现
      */
     const res = {};
     const fnGenErrors = [];
@@ -121,6 +133,7 @@ export function createCompileToFunctionFn(compile: Function): Function {
     // this should only happen if there is a bug in the compiler itself.
     // mostly for codegen development use
     /* istanbul ignore if */
+    /**处理上面代码转换过程中出现的错误，这一步一般不会报错，除非编译器本身出错了 */
     if (process.env.NODE_ENV !== "production") {
       if ((!compiled.errors || !compiled.errors.length) && fnGenErrors.length) {
         warn(

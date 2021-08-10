@@ -16,19 +16,19 @@ export const baseOptions: CompilerOptions = {
   expectHTML: true,
   /**负责编译class、style、v-model(input) */
   modules,
-  /**指令 */
+  /**处理指令 */
   directives,
   /**pre标签 */
   isPreTag,
-  /**是否为一元标签 */
+  /**是否为一元标签(自闭合标签) */
   isUnaryTag,
-  /**一些必须用于props的属性 */
+  /**一些必须用于props进行绑定的属性 */
   mustUseProp,
-  /**只有开始标签的标签 */
+  /**只有开始标签的标签， 可以只写开始标签的标签，结束标签浏览器会自动补全 */
   canBeLeftOpenTag,
-  /**保留标签 */
+  /**保留标签（html + svg）*/
   isReservedTag,
-  /**命名空间 */
+  /**获取标签的命名空间 */
   getTagNamespace,
   /**静态key */
   staticKeys: genStaticKeys(modules),

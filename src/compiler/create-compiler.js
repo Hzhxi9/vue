@@ -9,6 +9,15 @@ export function createCompilerCreator(baseCompile: Function): Function {
    * baseOptions： src/platforms/web/compiler/options
    */
   return function createCompiler(baseOptions: CompilerOptions) {
+    /**
+     * 编译函数
+     *  1. 合并选项，将options配置项合并到finalOptions(baseOptions)中，得到最终的编译配置对象
+     *  2. 调用核心编译器baseCompile得到编译结果
+     *  3. 将编译期间产生的error和tip挂载到编译结果上返回编译结果
+     * @param {*} template
+     * @param {*} options
+     * @returns
+     */
     function compile(
       /**字符串模板 */
       template: string,
@@ -20,14 +29,16 @@ export function createCompilerCreator(baseCompile: Function): Function {
       const errors = [];
       const tips = [];
 
+      /**日志，负责记录error和tip */
       let warn = (msg, range, tip) => {
         (tip ? tips : errors).push(msg);
       };
 
       /**
-       * 合并options配置和baseOptions， 将两者合并到finalOptions对象上
+       * 存在编译选项，合并options配置和baseOptions， 将两者合并到finalOptions对象上
        */
       if (options) {
+        /**开发环境 */
         if (
           process.env.NODE_ENV !== "production" &&
           options.outputSourceRange
@@ -50,13 +61,17 @@ export function createCompilerCreator(baseCompile: Function): Function {
         }
         /**
          * merge custom modules
+         * 将options中的配置项合并到finalOptions
          */
+
+        /**合并自定义module */
         if (options.modules) {
           finalOptions.modules = (baseOptions.modules || []).concat(
             options.modules
           );
         }
         // merge custom directives
+        /**合并自定义指令 */
         if (options.directives) {
           finalOptions.directives = extend(
             Object.create(baseOptions.directives || null),
@@ -64,6 +79,7 @@ export function createCompilerCreator(baseCompile: Function): Function {
           );
         }
         // copy other options
+        /**拷贝其他配置项 */
         for (const key in options) {
           if (key !== "modules" && key !== "directives") {
             finalOptions[key] = options[key];
@@ -71,16 +87,19 @@ export function createCompilerCreator(baseCompile: Function): Function {
         }
       }
 
+      /**日志 */
       finalOptions.warn = warn;
 
       /**
        * 执行baseCompile得到编译结果
+       * 调用核心编译函数，传递模板字符串和最终编译配置选项，得到编译结果
+       * 前面做的所有事情都是为了构建平台最终的配置选项
        */
       const compiled = baseCompile(template.trim(), finalOptions);
       if (process.env.NODE_ENV !== "production") {
         detectErrors(compiled.ast, warn);
       }
-      /**执行期间产生的错误和tips */
+      /**执行期间产生的错误和tips挂载到编译结果上 */
       compiled.errors = errors;
       compiled.tips = tips;
 
