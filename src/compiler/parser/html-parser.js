@@ -316,12 +316,15 @@ export function parseHTML(html, options) {
    * @returns {tagName: 'div', attr:[[xx],...], start: index}
    */
   function parseStartTag() {
-    /**<start></start> */
+    /**
+     * ["<div", "div"]
+     */
     const start = html.match(startTagOpen);
+
     if (start) {
       /**处理结果 */
       const match = {
-        /**标签名 */
+        /**标签名 比如div */
         tagName: start[1],
         /**属性数组 */
         attrs: [],
@@ -336,25 +339,51 @@ export function parseHTML(html, options) {
        * index = 此时的索引
        * start = '<div'
        **/
-      advance(start[0].length);
+
+      advance(start[0].length); /**比如 id='app'> */
+
       let end, attr;
       /**
        * 处理开始标签内的各个属性，并将这些属性放到match.attrs数组中
        */
+      
       while (
         !(end = html.match(startTagClose)) &&
         (attr = html.match(dynamicArgAttribute) || html.match(attribute))
       ) {
+        /**[" class='name'", 'class', '=', 'name'] */
+
+        /**属性开始的索引 */
         attr.start = index;
+        /**裁切整个属性键值对 */
         advance(attr[0].length);
+        /**属性结束的索引 */
         attr.end = index;
+        /**
+         * [
+         *  ' id="app"',
+         *  'id',
+         *  '=',
+         *  'app',
+         *  end: 13,
+         *  start: 4
+         * ]
+         */
         match.attrs.push(attr);
       }
-      /**开始标签的结束，end=">"或者end=' />' */
+      /**
+       * 开始标签的结束，end=">"或者end=' />' 
+       *  处理开始标签的结束， 匹配> 或者 /> 
+       **/
+      console.log(end,'==end')
       if (end) {
+        /**赋值自闭合标签 */
         match.unarySlash = end[1];
+        /**删除> 或者/> */
         advance(end[0].length);
+        /**设置结束索引 */
         match.end = index;
+        /**返回结果 */
         return match;
       }
     }
@@ -505,7 +534,7 @@ export function parseHTML(html, options) {
             end: stack[i].end,
           });
         }
-        console.log(stack[i]);
+      
         /**走到这里，说明上面的异常情况都处理完了，调用 options.end 处理正常的结束标签 */
         if (options.end) {
           options.end(stack[i].tag, start, end);
