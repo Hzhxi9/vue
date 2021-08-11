@@ -261,7 +261,14 @@ export function parse(
     shouldKeepComment: options.comments,
     outputSourceRange: options.outputSourceRange,
     /**
-     *
+     * 处理开始标签
+     * 主要做了以下 6 件事情:
+     *   1、创建 AST 对象
+     *   2、处理存在 v-model 指令的 input 标签，分别处理 input 为 checkbox、radio、其它的情况
+     *   3、处理标签上的众多指令，比如 v-pre、v-for、v-if、v-once
+     *   4、如果根节点 root 不存在则设置当前元素为根节点
+     *   5、如果当前元素为非自闭合标签则将自己 push 到 stack 数组，并记录 currentParent，在接下来处理子元素时用来告诉子元素自己的父节点是谁
+     *   6、如果当前元素为自闭合标签，则表示该标签要处理结束了，让自己和父元素产生关系，以及设置自己的子元素
      * @param {*} tag 标签名
      * @param {*} attrs 属性数组 [{name: attrName, value: attrValue, start, end},...]
      * @param {*} unary 是否为自闭合标签
@@ -412,27 +419,55 @@ export function parse(
         closeElement(element);
       }
     },
-
+    /**
+     * 处理结束标签
+     * @param {*} tag tag 结束标签的名称
+     * @param {*} start 结束标签的开始索引
+     * @param {*} end 结束标签的结束索引
+     */
     end(tag, start, end) {
+      /**
+       * 结束标签对应的开始标签的ast对象
+       */
       const element = stack[stack.length - 1];
       // pop stack
       stack.length -= 1;
+      /**这块儿有点不太理解，因为上一个元素有可能是当前元素的兄弟节点 */
       currentParent = stack[stack.length - 1];
       if (process.env.NODE_ENV !== "production" && options.outputSourceRange) {
         element.end = end;
       }
+      /**
+       * 主要做了 3 件事：
+       *   1、如果元素没有被处理过，即 el.processed 为 false，则调用 processElement 方法处理节点上的众多属性
+       *   2、让自己和父元素产生关系，将自己放到父元素的 children 数组中，并设置自己的 parent 属性为 currentParent
+       *   3、设置自己的子元素，将自己所有非插槽的子元素放到自己的 children 数组中
+       */
       closeElement(element);
     },
 
+    /**
+     * 处理文本，基于文本生成 ast 对象，然后将该 ast 放到它的父元素里，即 currentParent.children 数组中
+     * @param {*} text
+     * @param {*} start
+     * @param {*} end
+     * @returns
+     */
     chars(text: string, start: number, end: number) {
+      /**
+       * 异常处理
+       * currentParent不存在， 说明这段文本没有父元素
+       */
       if (!currentParent) {
         if (process.env.NODE_ENV !== "production") {
           if (text === template) {
+            /**文本不能作为组件的根元素 */
             warnOnce(
               "Component template requires a root element, rather than just text.",
               { start }
             );
           } else if ((text = text.trim())) {
+            /**放在根元素之外的文本会被忽略 */
             warnOnce(`text "${text}" outside root element will be ignored.`, {
               start,
             });
@@ -449,13 +484,21 @@ export function parse(
       ) {
         return;
       }
+
+      /**获取当前父元素的所有孩子节点 */
       const children = currentParent.children;
+      /**对 text 进行一系列的处理，比如删除空白字符，或者存在 whitespaceOptions 选项，则 text 直接置为空或者空格 */
       if (inPre || text.trim()) {
+        /**文本在 pre 标签内 或者 text.trim() 不为空 */
         text = isTextTag(currentParent) ? text : decodeHTMLCached(text);
       } else if (!children.length) {
-        // remove the whitespace-only node right after an opening tag
+        /**
+         * remove the whitespace-only node right after an opening tag
+         * 说明文本不在 pre 标签内而且 text.trim() 为空，而且当前父元素也没有孩子节点，则将 text 置为空
+         */
         text = "";
       } else if (whitespaceOption) {
+        /**压缩处理 */
         if (whitespaceOption === "condense") {
           // in condense mode, remove the whitespace node if it contains
           // line break, otherwise condense to a single space
@@ -466,18 +509,26 @@ export function parse(
       } else {
         text = preserveWhitespace ? " " : "";
       }
+      /**如果经过处理后 text 还存在 */
       if (text) {
         if (!inPre && whitespaceOption === "condense") {
-          // condense consecutive whitespaces into single space
+          /**
+           * condense consecutive whitespaces into single space
+           * 不在 pre 节点中，并且配置选项中存在压缩选项，则将多个连续空格压缩为单个
+           */
           text = text.replace(whitespaceRE, " ");
         }
         let res;
         let child: ?ASTNode;
+        /**基于 text 生成 AST 对象 */
         if (!inVPre && text !== " " && (res = parseText(text, delimiters))) {
+          /**文本中存在表达式（即有界定符） */
           child = {
             type: 2,
+            /**表达式 */
             expression: res.expression,
             tokens: res.tokens,
+            /**文本 */
             text,
           };
         } else if (
@@ -485,11 +536,13 @@ export function parse(
           !children.length ||
           children[children.length - 1].text !== " "
         ) {
+          /**纯文本节点 */
           child = {
             type: 3,
             text,
           };
         }
+        /**child 存在，则将 child 放到父元素的肚子里，即 currentParent.children 数组中 */
         if (child) {
           if (
             process.env.NODE_ENV !== "production" &&
@@ -514,21 +567,28 @@ export function parse(
       /**
        * 不存在currentParent
        * 表示一开始就存在注释， 直接忽略
+       *
+       * 禁止将任何内容作为 root 的节点的同级进行添加，注释应该被允许，但是会被忽略
+       * 如果 currentParent 不存在，说明注释和 root 为同级，忽略
        */
       if (currentParent) {
         const child: ASTText = {
+          /**节点类型 */
           type: 3,
+          /**注释内容 */
           text,
+          /**是否为注释 */
           isComment: true,
         };
         if (
           process.env.NODE_ENV !== "production" &&
           options.outputSourceRange
         ) {
+          /**记录节点的开始索引和结束索引 */
           child.start = start;
           child.end = end;
         }
-        /**将注释内容放置父元素 */
+        /**将注释内容放置父元素，将当前注释节点放到父元素的 children 属性中 */
         currentParent.children.push(child);
       }
     },
@@ -996,7 +1056,7 @@ function processSlotContent(el) {
 }
 /**
  * 解析binding， 得到插槽名称以及是否为动态插槽
- * @param {*} binding  
+ * @param {*} binding
  * @returns { name: 插槽名称, dynamic: 是否为动态插槽 }
  */
 function getSlotName(binding) {
@@ -1015,11 +1075,10 @@ function getSlotName(binding) {
       { name: `"${name}"`, dynamic: false };
 }
 
-
 /**
  * handle <slot/> outlets 处理自闭和slot标签
  * 得到插槽名称, el.slotName
- * @param {*} el 
+ * @param {*} el
  */
 function processSlotOutlet(el) {
   if (el.tag === "slot") {
@@ -1040,7 +1099,7 @@ function processSlotOutlet(el) {
 /**
  * 处理动态组件,<component :is="compName" />
  * 得到el.component = compName
- * @param {*} el 
+ * @param {*} el
  */
 function processComponent(el) {
   let binding;
