@@ -206,19 +206,29 @@ export function parseHTML(html, options) {
         text = html.substring(0, textEnd);
       }
 
+      /**如果 textEnd < 0，说明 html 中就没找到 <，那说明 html 就是一段文本 */
       if (textEnd < 0) {
         text = html;
       }
 
+      /** 将文本内容从 html 模版字符串上截取掉 */
       if (text) {
         advance(text.length);
       }
 
+      /**
+       * 处理文本
+       * 基于文本生成 ast 对象，然后将该 ast 放到它的父元素的肚子里，
+       * 即 currentParent.children 数组中
+       */
       if (options.chars && text) {
         options.chars(text, index - text.length, index);
       }
     } else {
+      /**处理 script、style、textarea 标签的闭合标签 */
       let endTagLength = 0;
+
+      /**开始标签的小写形式 */
       const stackedTag = lastTag.toLowerCase();
       const reStackedTag =
         reCache[stackedTag] ||
@@ -226,6 +236,7 @@ export function parseHTML(html, options) {
           "([\\s\\S]*?)(</" + stackedTag + "[^>]*>)",
           "i"
         ));
+      /**匹配并处理开始标签和结束标签之间的所有文本，比如 <script>xx</script> */
       const rest = html.replace(reStackedTag, function (all, text, endTag) {
         endTagLength = endTag.length;
         if (!isPlainTextElement(stackedTag) && stackedTag !== "noscript") {
@@ -246,6 +257,7 @@ export function parseHTML(html, options) {
       parseEndTag(stackedTag, index - endTagLength, index);
     }
 
+    /** 到这里就处理结束，如果 stack 数组中还有内容，则说明有标签没有被闭合，给出提示信息 */
     if (html === last) {
       options.chars && options.chars(html);
       if (
