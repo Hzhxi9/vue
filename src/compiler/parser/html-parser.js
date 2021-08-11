@@ -62,17 +62,23 @@ function decodeAttr(value, shouldDecodeNewlines) {
  */
 export function parseHTML(html, options) {
   const stack = [];
+
   const expectHTML = options.expectHTML;
+
   /**是否为自闭合标签 */
   const isUnaryTag = options.isUnaryTag || no;
+
   /**是否可以只有开始标签 */
   const canBeLeftOpenTag = options.canBeLeftOpenTag || no;
+
   /**记录当前在原始html字符串中的开始位置 */
   let index = 0;
+
   let last, lastTag;
   /**循环遍历html字符串 */
   while (html) {
     last = html;
+
     // Make sure we're not in a plaintext content element like script/style
     /**确保不是在 script、style、textarea 这样的纯文本元素中 */
     if (!lastTag || !isPlainTextElement(lastTag)) {
@@ -89,11 +95,17 @@ export function parseHTML(html, options) {
         /**
          * 处理注释标签
          * <!-- xx -->
+         *
+         *
+         * 总结
+         * 1. 获取注释标签 --> 的索引
+         * 2. 若存在-->的索引，判断options.shouldKeepComment是否保留注释
+         * 3. 若options.shouldKeepComment为true，就将注释内容放入父元素的children属性中
+         * 4. 剪切整个注释内容
          */
         if (comment.test(html)) {
           /**注释标签的结束索引 */
           const commentEnd = html.indexOf("-->");
-
           if (commentEnd >= 0) {
             /**是否应该保留注释 */
             if (options.shouldKeepComment) {
@@ -104,11 +116,14 @@ export function parseHTML(html, options) {
                 index + commentEnd + 3
               );
             }
+
             /**
              * 剪切整个注释内容
              * 调整html和index变量
              **/
             advance(commentEnd + 3);
+
+            console.log(html, "=======注释结束========");
             continue;
           }
         }
@@ -142,11 +157,21 @@ export function parseHTML(html, options) {
 
         // End tag:
         /**处理结束标签， 比如</div> */
-        const endTagMatch = html.match(endTag);
+        const endTagMatch = html.match(endTag); /**比如: [</div>, div] */
+
         if (endTagMatch) {
+          /**备份索引 */
           const curIndex = index;
+
+          /**剪切结束标签 */
           advance(endTagMatch[0].length);
-          /**处理结束标签 */
+
+          /**
+           * 处理结束标签
+           * endTagMatch[1]: 标签名
+           * curIndex: index
+           * index: endTagMatch[0].length + index
+           */
           parseEndTag(endTagMatch[1], curIndex, index);
           continue;
         }
@@ -474,11 +499,13 @@ export function parseHTML(html, options) {
           (i > pos || !tagName) &&
           options.warn
         ) {
+          console.log(tagName, "==tagName", process.env.NODE_ENV, i > pos);
           options.warn(`tag <${stack[i].tag}> has no matching end tag.`, {
             start: stack[i].start,
             end: stack[i].end,
           });
         }
+        console.log(stack[i]);
         /**走到这里，说明上面的异常情况都处理完了，调用 options.end 处理正常的结束标签 */
         if (options.end) {
           options.end(stack[i].tag, start, end);

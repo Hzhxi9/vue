@@ -127,9 +127,20 @@ export function parse(
    * platform/web/compiler/modules/style
    * platform/web/compiler/modules/model
    */
-  transforms = pluckModuleFunction(options.modules, "transformNode");
-  preTransforms = pluckModuleFunction(options.modules, "preTransformNode");
-  postTransforms = pluckModuleFunction(options.modules, "postTransformNode");
+  transforms = pluckModuleFunction(
+    options.modules,
+    "transformNode"
+  ); /**class */
+
+  preTransforms = pluckModuleFunction(
+    options.modules,
+    "preTransformNode"
+  ); /**model  */
+
+  postTransforms = pluckModuleFunction(
+    options.modules,
+    "postTransformNode"
+  ); /**style */
 
   /**界定符,比如{{}}*/
   delimiters = options.delimiters;
@@ -158,6 +169,7 @@ export function parse(
     }
   }
 
+  /**TODO */
   function closeElement(element) {
     trimEndingWhitespace(element);
     if (!inVPre && !element.processed) {
