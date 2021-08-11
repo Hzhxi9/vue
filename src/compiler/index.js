@@ -8,6 +8,13 @@ import { createCompilerCreator } from "./create-compiler";
 // `createCompilerCreator` allows creating compilers that use alternative
 // parser/optimizer/codegen, e.g the SSR optimizing compiler.
 // Here we just export a default compiler using the default parts.
+
+/**
+ * `createCompilerCreator`允许创建使用替代方法的编译
+ * 解析器/优化器/代码生成器，例如SSR优化编译器。
+ * 这里我们只是使用默认部分导出默认编译器。
+ */
+
 /**
  *  在这之前做的所有事都是为了构建平台特有的编译选项(options),比如web平台
  */
@@ -20,8 +27,8 @@ export const createCompiler = createCompilerCreator(
    * 静态渲染函数放到code.staticRenderFns数组中
    * code.render为动态渲染函数
    * 在将来渲染时执行渲染函数得到VNode
-   * @param {*} template
-   * @param {*} options
+   * @param {*} template 模板字符串
+   * @param {*} options 配置项
    * @returns
    */
   function baseCompile(
@@ -54,6 +61,7 @@ export const createCompiler = createCompilerCreator(
      * 从ast生成渲染函数，生成比如code.render = "_c('div',{attrs:{"id":"app"}},_l((arr),function(item){return _c('div',{key:item},[_v(_s(item))])}),0)"
      */
     const code = generate(ast, options);
+
     return {
       ast,
       render: code.render,

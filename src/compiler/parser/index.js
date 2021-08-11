@@ -122,6 +122,7 @@ export function parse(
    * 这些函数分别是style、class、model这三个模块中导出的对应函数
    * 分别获取options。modules下的class、model、style 三个模块中的transformNode、preTransformNode、postTransformNode方法
    * 负责处理元素节点上的class、style、v-model
+   *
    * platform/web/compiler/modules/class
    * platform/web/compiler/modules/style
    * platform/web/compiler/modules/model
@@ -144,7 +145,9 @@ export function parse(
   /**记录当前元素的父元素 */
   let currentParent;
 
+  /**v-pre */
   let inVPre = false;
+  /**pre标签 */
   let inPre = false;
   let warned = false;
 

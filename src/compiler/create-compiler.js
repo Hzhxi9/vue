@@ -4,6 +4,11 @@ import { extend } from "shared/util";
 import { detectErrors } from "./error-detector";
 import { createCompileToFunctionFn } from "./to-function";
 
+/**
+ *
+ * @param {*} baseCompile  核心编译器
+ * @returns
+ */
 export function createCompilerCreator(baseCompile: Function): Function {
   /**
    * baseOptions： src/platforms/web/compiler/options
@@ -59,6 +64,7 @@ export function createCompilerCreator(baseCompile: Function): Function {
             (tip ? tips : errors).push(data);
           };
         }
+
         /**
          * merge custom modules
          * 将options中的配置项合并到finalOptions

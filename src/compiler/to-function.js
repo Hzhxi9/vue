@@ -9,6 +9,12 @@ type CompiledFunctionResult = {
   staticRenderFns: Array<Function>,
 };
 
+/**
+ * 将可执行字符串转换为函数
+ * @param {*} code
+ * @param {*} errors
+ * @returns
+ */
 function createFunction(code, errors) {
   try {
     return new Function(code);
@@ -35,6 +41,7 @@ export function createCompileToFunctionFn(compile: Function): Function {
     /**组件实例 */
     vm?: Component
   ): CompiledFunctionResult {
+    /**复制选项 */
     options = extend({}, options);
     /**日志 */
     const warn = options.warn || baseWarn;
@@ -43,6 +50,7 @@ export function createCompileToFunctionFn(compile: Function): Function {
     /* istanbul ignore if */
     if (process.env.NODE_ENV !== "production") {
       // detect possible CSP restriction
+      /**CSP限制 */
       try {
         new Function("return 1");
       } catch (e) {
@@ -118,12 +126,15 @@ export function createCompileToFunctionFn(compile: Function): Function {
      */
     const res = {};
     const fnGenErrors = [];
+
     /**
      * 通过new Function(code), 将字符串转换成函数
+     * render 渲染函数
      */
     res.render = createFunction(compiled.render, fnGenErrors);
     /**
      * 将静态节点的函数字符串转换成可执行函数
+     * staticRenderFns 静态渲染函数
      */
     res.staticRenderFns = compiled.staticRenderFns.map((code) => {
       return createFunction(code, fnGenErrors);
@@ -132,6 +143,9 @@ export function createCompileToFunctionFn(compile: Function): Function {
     // check function generation errors.
     // this should only happen if there is a bug in the compiler itself.
     // mostly for codegen development use
+    /**
+     * 检查函数生成错误。只有当编译器本身存在错误时，才会发生这种情况。主要用于codegen开发
+     */
     /* istanbul ignore if */
     /**处理上面代码转换过程中出现的错误，这一步一般不会报错，除非编译器本身出错了 */
     if (process.env.NODE_ENV !== "production") {

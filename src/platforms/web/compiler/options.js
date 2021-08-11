@@ -12,6 +12,7 @@ import directives from "./directives/index";
 import { genStaticKeys } from "shared/util";
 import { isUnaryTag, canBeLeftOpenTag } from "./util";
 
+/**平台级别的配置选项 */
 export const baseOptions: CompilerOptions = {
   expectHTML: true,
   /**负责编译class、style、v-model(input) */

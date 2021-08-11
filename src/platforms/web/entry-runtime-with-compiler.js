@@ -12,6 +12,9 @@ import {
   shouldDecodeNewlinesForHref,
 } from "./util/compat";
 
+/**
+ * 通过id获取innerHTML
+ */
 const idToTemplate = cached((id) => {
   const el = query(id);
   return el && el.innerHTML;
@@ -24,6 +27,10 @@ const mount = Vue.prototype.$mount;
 
 /**
  * 编译器的入口
+ *
+ * 找到入口的方法
+ * 1. 断点调试，初始化最后一步是执行$mount进行挂载，在全量的Vue包中这一步就会进入编译阶段
+ * 2. 通过rollup的配置文件一步步的找
  *
  * 运行时的Vue就没有这部分的代码，通过打包器结合vue-loader+vue-compiler-utils 进行预编译
  * 将模板编译成render函数
@@ -58,12 +65,13 @@ Vue.prototype.$mount = function (
 
   /**配置选项 */
   const options = this.$options;
-  /**
-   * { render: ()=>{} }
-   */
 
-  // resolve template/el and convert to render function
+  /**
+   * resolve template/el and convert to render function
+   * { render: () => {} }
+   */
   if (!options.render) {
+    /**从选项中获取template */
     let template = options.template;
 
     /**
@@ -75,6 +83,7 @@ Vue.prototype.$mount = function (
     if (template) {
       /**处理template */
       if (typeof template === "string") {
+        /**id选择器 */
         if (template.charAt(0) === "#") {
           /**
            * innerHTML
@@ -116,6 +125,7 @@ Vue.prototype.$mount = function (
       }
 
       /**
+       * 进入编译阶段
        * 编译模板
        * render: 动态渲染函数
        * staticRenderFns: 静态渲染函数
@@ -128,7 +138,9 @@ Vue.prototype.$mount = function (
            * 标记元素在HTML模板字符串中的开始和结束的索引位置
            **/
           outputSourceRange: process.env.NODE_ENV !== "production",
+          /**IE在属性值内编码换行，而其他浏览器则不编码 */
           shouldDecodeNewlines,
+          /**chrome将内容编码为[href] */
           shouldDecodeNewlinesForHref,
           /**界定符， 默认({}) */
           delimiters: options.delimiters,
@@ -159,11 +171,18 @@ Vue.prototype.$mount = function (
 /**
  * Get outerHTML of elements, taking care
  * of SVG elements in IE as well.
+ * 获取元素的outerHTML
  */
 function getOuterHTML(el: Element): string {
   if (el.outerHTML) {
+    /**
+     *  DOM接口的outerHTML属性获取描述元素（包括其后代）的序列化HTML片段。它也可以设置为用从给定字符串解析的节点替换元素
+     */
     return el.outerHTML;
   } else {
+    /**
+     * 不存在就创建div
+     */
     const container = document.createElement("div");
     container.appendChild(el.cloneNode(true));
     return container.innerHTML;
