@@ -21,27 +21,51 @@ import {
   getAndRemoveAttrByRegex,
 } from "../helpers";
 
+/**判断是否是 @或者v-on:属性开头的 */
 export const onRE = /^@|^v-on:/;
+
+/**判断是否是 v-或者@或者: 属性开头的 */
 export const dirRE = process.env.VBIND_PROP_SHORTHAND
   ? /^v-|^@|^:|^\.|^#/
   : /^v-|^@|^:|^#/;
+
+/**匹配 含有   字符串 in  字符串   或者  字符串 of  字符串 */
 export const forAliasRE = /([\s\S]*?)\s+(?:in|of)\s+([\s\S]*)/;
+
+/**匹配上,  但是属于两边是 [{ , 点 , }]  所以匹配上   ,+字符串 */
 export const forIteratorRE = /,([^,\}\]]*)(?:,([^,\}\]]*))?$/;
+
+/**匹配括号 () */
 const stripParensRE = /^\(|\)$/g;
+
+/**匹配动态属性[] */
 const dynamicArgRE = /^\[.*\]$/;
 
+/**匹配字符串是否含有: */
 const argRE = /:(.*)$/;
+
+/**开始匹配是 :或者是v-bind */
 export const bindRE = /^:|^\.|^v-bind:/;
+
+/**匹配. */
 const propBindRE = /^\./;
+
+/**匹配以点开头的分组 不属于点 data.object.info.age  匹配到 ['.object'，'.info' , '.age'] */
 const modifierRE = /\.[^.\]]+(?=[^\]]*$)/g;
 
+/**匹配v-slot: or # */
 const slotRE = /^v-slot(:|$)|^#/;
 
+/**匹配\n or \r */
 const lineBreakRE = /[\r\n]/;
+
+/**多个连续空格压缩为单个 匹配空格 */
 const whitespaceRE = /[ \f\t\r\n]+/g;
 
+/**匹配 " ' <>/= */
 const invalidAttributeRE = /[\s"'<>\/=]/;
 
+/**获取真实的dom的textContent文本 */
 const decodeHTMLCached = cached(he.decode);
 
 export const emptySlotScopeToken = `_empty_`;
@@ -596,6 +620,9 @@ export function parse(
 
       /**获取当前父元素的所有孩子节点 */
       const children = currentParent.children;
+
+      console.log(children, "==children==");
+
       /**对 text 进行一系列的处理，比如删除空白字符，或者存在 whitespaceOptions 选项，则 text 直接置为空或者空格 */
       if (inPre || text.trim()) {
         /**文本在 pre 标签内 或者 text.trim() 不为空 */
