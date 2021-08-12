@@ -1598,13 +1598,23 @@ function processAttrs(el) {
       }
       /**将属性对象放到 el.attrs 数组中，el.attrs = [{ name, value, start, end }] */
       addAttr(el, name, JSON.stringify(value), list[i]);
+
       // #6887 firefox doesn't update muted state if set via attribute
       // even immediately after element creation
+      /**
+       * 如果通过属性设置，firefox不会更新静音状态,甚至在元素创建之后
+       */
       if (
-        !el.component &&
-        name === "muted" &&
-        platformMustUseProp(el.tag, el.attrsMap.type, name)
+        !el.component /**如果不是组件 */ &&
+        name ===
+          "muted" /**Video 属性 muted 属性设置或返回视频是否应该被静音（关闭声音）。 */ &&
+        platformMustUseProp(
+          el.tag,
+          el.attrsMap.type,
+          name
+        ) /**校验特定的属性方法 */
       ) {
+        /**添加音频属性 */
         addProp(el, name, "true", list[i]);
       }
     }

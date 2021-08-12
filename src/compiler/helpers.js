@@ -36,6 +36,14 @@ export function addProp(
   el.plain = false;
 }
 
+/**
+ * 添加attrs属性
+ * @param {*} el
+ * @param {*} name
+ * @param {*} value
+ * @param {*} range
+ * @param {*} dynamic
+ */
 export function addAttr(
   el: ASTElement,
   name: string,
@@ -46,6 +54,9 @@ export function addAttr(
   const attrs = dynamic
     ? el.dynamicAttrs || (el.dynamicAttrs = [])
     : el.attrs || (el.attrs = []);
+  /**
+   * attrs: [{name: "id", value: "\"app\"", dynamic: undefined, start: 5, end: 13}]
+   */
   attrs.push(rangeSetItem({ name, value, dynamic }, range));
   el.plain = false;
 }
