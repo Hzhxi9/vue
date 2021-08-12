@@ -50,6 +50,12 @@ const isIgnoreNewlineTag = makeMap("pre,textarea", true);
 const shouldIgnoreFirstNewline = (tag, html) =>
   tag && isIgnoreNewlineTag(tag) && html[0] === "\n";
 
+/**
+ * 替换html 中的特殊符号，转义成js解析的字符串,替换 把   &lt;替换 <  ， &gt; 替换 > ， &quot;替换  "， &amp;替换 & ， &#10;替换\n  ，&#9;替换\t
+ * @param {*} value 标签中属性的值
+ * @param {*} shouldDecodeNewlines 状态布尔值 标志。判断是否是a标签和是ie浏览器还是谷歌浏览器
+ * @returns
+ */
 function decodeAttr(value, shouldDecodeNewlines) {
   const re = shouldDecodeNewlines ? encodedAttrWithNewLines : encodedAttr;
   return value.replace(re, (match) => decodingMap[match]);
@@ -346,7 +352,7 @@ export function parseHTML(html, options) {
       /**
        * 处理开始标签内的各个属性，并将这些属性放到match.attrs数组中
        */
-      
+
       while (
         !(end = html.match(startTagClose)) &&
         (attr = html.match(dynamicArgAttribute) || html.match(attribute))
@@ -372,10 +378,9 @@ export function parseHTML(html, options) {
         match.attrs.push(attr);
       }
       /**
-       * 开始标签的结束，end=">"或者end=' />' 
-       *  处理开始标签的结束， 匹配> 或者 /> 
+       * 开始标签的结束，end=">"或者end=' />'
+       *  处理开始标签的结束， 匹配> 或者 />
        **/
-      console.log(end,'==end')
       if (end) {
         /**赋值自闭合标签 */
         match.unarySlash = end[1];
@@ -396,7 +401,17 @@ export function parseHTML(html, options) {
    *   接下来调用options.start方法处理标签，并根据标签信息生成element ast
    *   以及处理开始标签上的属性和指令，最后将element ast放入stack数组
    *
-   * @param {*} match {tagName: 'div', attr:[[xx],...], start: index}
+   * 总结：
+   *  1. 获取tagName 标签名
+   *  2. 获取自闭合标签
+   *  3. 处理p标签
+   *  4. 判断是否自闭合标签
+   *  5. 创建属性数组，将属性对象转换成属性数组
+   *  6. 如果不是自闭合标签， 将标签信息放到stack数组中，待处理他的闭合标签时在弹出stack数组
+   *  7. 如果是自闭合标签， 标签信息不用放到stack数组中，直接处理众多属性，将他们都设置到 element ast 对象上，就没有处理 结束标签的那一步了，这一步在处理开始标签的过程中就进行了
+   *  8. 调用 start 方法， 创建ast对象
+   *
+   * @param {*} match { attrs: [{ 0: " id='app'", 1: "id", 2: "=", 3: "app", end: 13, start: 4 }], end: 14, start: 0, tagName: "div", unarySlash: '' }
    */
   function handleStartTag(match) {
     /**标签名字 */
@@ -422,20 +437,27 @@ export function parseHTML(html, options) {
      * 得到[{name: attrName, value: attrValue, start, end}, ...]
      **/
     const l = match.attrs.length;
+    /**数组属性对象转换正真正的数组对象 */
     const attrs = new Array(l);
+
     for (let i = 0; i < l; i++) {
       const args = match.attrs[i];
-      // 比如：args[3] => 'id'，args[4] => '='，args[5] => 'app'
+      /**依次取出匹配到的value值 */
       const value = args[3] || args[4] || args[5] || "";
+
       const shouldDecodeNewlines =
         tagName === "a" && args[1] === "href"
-          ? options.shouldDecodeNewlinesForHref
-          : options.shouldDecodeNewlines;
+          ? options.shouldDecodeNewlinesForHref /** true chrome在a[href]中编码内容 */
+          : options.shouldDecodeNewlines; /**false IE在属性值中编码换行，而其他浏览器则不会 */
+
       /** attrs[i] = { id: 'app' } */
       attrs[i] = {
+        /**属性名称 */
         name: args[1],
+        /**属性值 替换html 中的特殊符号，转义成js解析的字符串,替换 把   &lt;替换 <  ， &gt; 替换 > ， &quot;替换  "， &amp;替换 & ， &#10;替换\n  ，&#9;替换\t */
         value: decodeAttr(value, shouldDecodeNewlines),
       };
+
       /**非生产环境，记录属性的开始和结束索引 */
       if (process.env.NODE_ENV !== "production" && options.outputSourceRange) {
         attrs[i].start = args.start + args[0].match(/^\s*/).length;
@@ -473,6 +495,13 @@ export function parseHTML(html, options) {
      *  6、如果当前元素为自闭合标签，则表示该标签要处理结束了，让自己和父元素产生关系，以及设置自己的子元素
      */
     if (options.start) {
+      /**
+       * tagName: 标签名 div
+       * attrs: 属性数组  {name: "id", value: "app", start: 5, end: 13}
+       * unary: 是否为自闭合标签 false
+       * match.start 标签开始位置 5
+       * match.end 标签结束位置 13
+       */
       options.start(tagName, attrs, unary, match.start, match.end);
     }
   }
@@ -534,7 +563,7 @@ export function parseHTML(html, options) {
             end: stack[i].end,
           });
         }
-      
+
         /**走到这里，说明上面的异常情况都处理完了，调用 options.end 处理正常的结束标签 */
         if (options.end) {
           options.end(stack[i].tag, start, end);
