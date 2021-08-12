@@ -8,7 +8,7 @@ const validDivisionCharRE = /[\w).+\-_$\]]/;
  * @param {*} exp
  * @returns
  */
-console.log(parseFilters(" ab | c | d")); //
+
 export function parseFilters(exp: string): string {
   /**是否在''中 */
   let inSingle = false;
@@ -30,9 +30,6 @@ export function parseFilters(exp: string): string {
   for (i = 0; i < exp.length; i++) {
     prev = c;
     c = exp.charCodeAt(i);
-
-    console.log(c, exp[i]);
-    console.log(String.fromCharCode("0x5c"));
 
     if (inSingle) {
       if (c === 0x27 /** ' */ && prev !== 0x5c /** \ */) inSingle = false;

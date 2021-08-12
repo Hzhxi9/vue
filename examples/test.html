@@ -11,7 +11,7 @@
 
 <body>
   <div id="app">
-    <div :id="msg"></div>
+    <div :id-id.camel="msg-msg"></div>
   </div>
 
 </body>
@@ -22,6 +22,30 @@
   //    <!-- 注释 -->
   //   `
   // })
+
+  // function cached(fn) {
+  //   const cache = Object.create(null)
+
+  //   return (function cachedFn(str) {
+  //     const hit = cache[str]
+  //     console.log(hit, '==cache==')
+  //     return hit || (cache[str] = fn(str))
+  //   })
+  // }
+
+  // var camelizeRE = /-(\w)/g;
+  // var camelize = cached(function (str) {
+  //   console.log('===')
+  //   return str.replace(camelizeRE, function (_, c) {
+  //     return c ? c.toUpperCase() : '';
+  //   })
+  // });
+
+  // console.log(camelize('abc-def'))
+  // console.log(camelize('abc-d'))
+  // console.log(camelize('abc-d'))
+
+
 
   new Vue({
     el: "#app",

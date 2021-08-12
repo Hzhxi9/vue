@@ -1370,16 +1370,19 @@ function processAttrs(el) {
       if (bindRE.test(name)) {
         /**v-bind 处理 v-bind 指令属性，最后得到 el.attrs 或者 el.dynamicAttrs = [{ name, value, start, end, dynamic }, ...] */
 
-        /**属性名，比如：id */
+        /**属性名，比如：id，截取: or v-bind  */
         name = name.replace(bindRE, "");
 
-        /**属性值，比如：test */
+        /**
+         * 属性值，比如：test
+         * 处理value 解析成正确的value，把过滤器 转换成vue 虚拟dom的解析方法函数 比如把过滤器 ' ab | c | d' 转换成 _f("d")(_f("c")(ab))
+         * 表达式中的过滤器解析方法
+         */
         value = parseFilters(value);
 
         /**是否为动态属性 <div :[id]="test"></div> */
         isDynamic = dynamicArgRE.test(name);
 
-        console.log(name, value, isDynamic);
         if (isDynamic) {
           /**如果是动态属性，则去掉属性两侧的方括号 [] */
           name = name.slice(1, -1);
@@ -1398,7 +1401,16 @@ function processAttrs(el) {
         /**存在修饰符 */
         if (modifiers) {
           if (modifiers.prop && !isDynamic) {
+            /**
+             * 存在prop修饰符且不是动态属性值
+             * eg： :id-id.prop="id"
+             * name: idId
+             *
+             * camelize 横线-的转换成驼峰写法
+             */
             name = camelize(name);
+
+            /**innerHtml 特殊处理 */
             if (name === "innerHtml") name = "innerHTML";
           }
           if (modifiers.camel && !isDynamic) {
