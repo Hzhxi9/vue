@@ -80,6 +80,17 @@ export function addRawAttr(
   el.attrsList.push(rangeSetItem({ name, value }, range));
 }
 
+/**
+ * 为虚拟dom 添加一个 指令directives属性 对象
+ * @param {*} el 虚拟dom
+ * @param {*} name 获取 view 原始属性的名称 不包含 v- : @的
+ * @param {*} rawName  获取 view 原始属性的名称 包含 v- : @的
+ * @param {*} value 属性view 属性上的值
+ * @param {*} arg efg:hig 属性名称冒号后面多出来的标签
+ * @param {*} isDynamicArg
+ * @param {*} modifiers
+ * @param {*} range
+ */
 export function addDirective(
   el: ASTElement,
   name: string,
@@ -187,33 +198,40 @@ export function addHandler(
 
   /**处理 capture、once、passive 这三个修饰符，通过给 name 添加不同的标记来标记这些修饰符 */
   // check capture modifier
-
   if (modifiers.capture) {
     delete modifiers.capture;
-    /**给带有 capture 修饰符的属性，加上 ! 标记 */
+    /**给带有 capture 修饰符的属性，加上 ! 标记  将事件标记为捕获*/
     name = prependModifierMarker("!", name, dynamic);
   }
   if (modifiers.once) {
     delete modifiers.once;
-    /**once 修饰符加 ~ 标记 */
+    /**once 修饰符加 ~ 标记 将事件标记为一次 */
     name = prependModifierMarker("~", name, dynamic);
   }
 
   /* istanbul ignore if */
   if (modifiers.passive) {
     delete modifiers.passive;
-    /**passive 修饰符加 & 标记 */
+    /**passive 修饰符加 & 标记  将事件标记为被动的 */
     name = prependModifierMarker("&", name, dynamic);
   }
 
   let events;
+  /**判断是有原生事件修饰符 通俗点讲：就是在父组件中给子组件绑定一个原生的事件，就将子组件变成了普通的HTML标签，不加'. native'事件是无法触发的。 */
   if (modifiers.native) {
+    /*
+     * 比如<my-component @click="outClick"></my-component> 这样是不会触发事件的
+     * 需要加修饰符<my-component @click.native="outClick"></my-component>
+     **/
     delete modifiers.native;
     /**native 修饰符， 监听组件根元素的原生事件，将事件信息存放到 el.nativeEvents 对象中 */
     events = el.nativeEvents || (el.nativeEvents = {});
   } else {
+    /**直接获取事件对象，如果虚拟dom没有events属性则为他添加一个 */
     events = el.events || (el.events = {});
   }
+
+  /**此时下面操作events 就相当于操作 el.nativeEvents 或者 el.events 对象 */
 
   const newHandler: any = rangeSetItem({ value: value.trim(), dynamic }, range);
   if (modifiers !== emptyObject) {
@@ -227,11 +245,20 @@ export function addHandler(
   /**将配置对象放到 events[name] = [newHandler, handler, ...] */
   const handlers = events[name];
   /* istanbul ignore if */
+  /**判断事件是否是数组 */
   if (Array.isArray(handlers)) {
+    /**根据important 判断在前面添加事件还是在末端加 */
     important ? handlers.unshift(newHandler) : handlers.push(newHandler);
   } else if (handlers) {
+    /**
+     * 如果handlers 已经存在，但是不是数组，说明现在是有两个事件
+     * 将handlers 修改为数组，新的事件和旧的事件一起
+     */
     events[name] = important ? [newHandler, handlers] : [handlers, newHandler];
   } else {
+    /**
+     * 如果handlers 不存在 则直接获取事件，说明该事件同名的只有一个，
+     */
     events[name] = newHandler;
   }
 
@@ -239,6 +266,7 @@ export function addHandler(
 }
 
 export function getRawBindingAttr(el: ASTElement, name: string) {
+  /**获取 :属性 或者v-bind:属性 */
   return (
     el.rawAttrsMap[":" + name] ||
     el.rawAttrsMap["v-bind:" + name] ||
@@ -247,6 +275,7 @@ export function getRawBindingAttr(el: ASTElement, name: string) {
 }
 
 /**
+ * 获取 :属性 或者v-bind:属性，或者获取属性 移除传进来的属性name，并且返回获取到 属性的值
  * 获取el 对象上执行属性name的值
  * @param {*} el
  * @param {*} name
@@ -258,14 +287,20 @@ export function getBindingAttr(
   name: string,
   getStatic?: boolean
 ): ?string {
-  /**获取指定属性的值 */
+  /**
+   * 获取指定属性的值
+   * 获取 :属性 或者v-bind:属性
+   */
   const dynamicValue =
     getAndRemoveAttr(el, ":" + name) || getAndRemoveAttr(el, "v-bind:" + name);
   if (dynamicValue != null) {
     return parseFilters(dynamicValue);
   } else if (getStatic !== false) {
+    /**移除传进来的属性name，并且返回获取到 属性的值 */
     const staticValue = getAndRemoveAttr(el, name);
+
     if (staticValue != null) {
+      /**转换成字符串 */
       return JSON.stringify(staticValue);
     }
   }

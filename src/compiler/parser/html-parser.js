@@ -376,10 +376,10 @@ export function parseHTML(html, options) {
       advance(start[0].length); /**比如 id='app'> */
 
       let end, attr;
+
       /**
        * 处理开始标签内的各个属性，并将这些属性放到match.attrs数组中
        */
-
       while (
         !(end = html.match(startTagClose)) &&
         (attr = html.match(dynamicArgAttribute) || html.match(attribute))
