@@ -1419,11 +1419,24 @@ function processAttrs(el) {
 
           /**处理 sync 修饰符 */
           if (modifiers.sync) {
+            /**
+             * 为虚拟dom添加events 事件对象属性，
+             * 如果添加@click='clickEvent' 则此时 虚拟dom为el.events.click.value="clickEvent"
+             * 或者虚拟dom添加nativeEvents 事件对象属性
+             * 如果添加@click.native='clickEvent' 则此时 虚拟dom为el.nativeEvents.click.value="clickEvent"
+             */
+
+            /**
+             * 创赋值代码，子功能转义字符串对象拆分字符串对象,把后一位key分离出来
+             * 在组件使用
+             * syncGen: "add=$event"
+             **/
             syncGen = genAssignmentCode(value, `$event`);
+
             if (!isDynamic) {
               addHandler(
                 el,
-                `update:${camelize(name)}`,
+                `update:${camelize(name)}` /**属性 v-model 变成 vModel */,
                 syncGen,
                 null,
                 false,
@@ -1459,7 +1472,12 @@ function processAttrs(el) {
 
         if (
           (modifiers && modifiers.prop) ||
-          (!el.component && platformMustUseProp(el.tag, el.attrsMap.type, name))
+          (!el.component &&
+            platformMustUseProp(
+              el.tag,
+              el.attrsMap.type,
+              name
+            )) /**校验特定的属性方法 */
         ) {
           /**
            * 将属性对象添加到 el.props 数组中，表示这些属性必须通过 props 设置
@@ -1471,14 +1489,24 @@ function processAttrs(el) {
           addAttr(el, name, value, list[i], isDynamic);
         }
       } else if (onRE.test(name)) {
-        /**
-         *  v-on 处理事件，<div @click="test"></div>
-         */
+        /**v-on 处理事件，<div @click="test"></div> */
+        console.log("===事件开始===");
 
-        /**属性名，即事件名 */
+        /**
+         * 属性名，即事件名
+         * name: click
+         */
         name = name.replace(onRE, "");
-        /**是否为动态属性 */
+
+        console.log(name, "==name==");
+
+        /**
+         * 是否为动态属性
+         * @[click]="add" => true
+         * @click="add" => false
+         **/
         isDynamic = dynamicArgRE.test(name);
+
         if (isDynamic) {
           /**动态属性，则获取 [] 中的属性名 */
           name = name.slice(1, -1);
@@ -1486,36 +1514,71 @@ function processAttrs(el) {
         /**
          * 处理事件属性，将属性的信息添加到 el.events 或者 el.nativeEvents 对象上，格式：
          * el.events = [{ value, start, end, modifiers, dynamic }, ...]
+         *
+         * eg:
+         *  el: ast对象
+         *  name: 事件名 事件类型 click
+         *  value: 事件名称的值 add
+         *  modifiers: 修饰符 {stop: true}
+         *  warn: 日志函数
+         *  list[i]: 事件对象 {name: "@click.stop", value: "add", start: 24, end: 41}
+         *  isDynamic: 是否为动态属性
          */
+
         addHandler(el, name, value, modifiers, false, warn, list[i], isDynamic);
       } else {
         /**normal directives，其它的普通指令 */
+        /**一般也不会进来这里 因为前面已经匹配了  :或者v-bind  @或者v-on:属性 开头的，所以进来这里的就是自定义指令 */
 
-        /**得到 el.directives = [{name, rawName, value, arg, isDynamicArg, modifier, start, end }, ...] */
+        /**
+         * 得到 el.directives = [{name, rawName, value, arg, isDynamicArg, modifier, start, end }, ...]
+         * eg: <div v-double:single="add"></div>
+         * name: double
+         **/
         name = name.replace(dirRE, "");
-        // parse arg
+
+        /**
+         * parse arg
+         * 匹配字符串是否含有: 只是匹配一个
+         * eg: <div v-double:single="add"></div>
+         * name: double:single
+         * argMatch: [":single", "single"]
+         *
+         * eg: <div v-double:single:none="add"></div>
+         * name: double:single:none
+         * argMatch: [":single:none", "single:none"]
+         **/
         const argMatch = name.match(argRE);
 
+        /**
+         * arg: single
+         */
         let arg = argMatch && argMatch[1];
+
         isDynamic = false;
         if (arg) {
+          /**截取冒号之后的值， name: double */
           name = name.slice(0, -(arg.length + 1));
+
           if (dynamicArgRE.test(arg)) {
+            /**删除[] */
             arg = arg.slice(1, -1);
             isDynamic = true;
           }
         }
+        /**为虚拟dom 添加一个 指令directives属性 对象 */
         addDirective(
-          el,
-          name,
-          rawName,
-          value,
-          arg,
+          el /**ast对象 */,
+          name /**属性的名称 不包含 v- : @的 */,
+          rawName /**属性的名称 包含 v- : @的 */,
+          value /**属性值 */,
+          arg /**efg:hig 属性名称冒号后面多出来的标签 */,
           isDynamic,
           modifiers,
           list[i]
         );
         if (process.env.NODE_ENV !== "production" && name === "model") {
+          /**检查指令的命名值 不能为for 或者 for中的遍历的item */
           checkForAliasModel(el, value);
         }
       }

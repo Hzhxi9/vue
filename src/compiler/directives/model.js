@@ -94,6 +94,15 @@ type ModelParseResult = {
   key: string | null,
 };
 
+// console.log(parseModel("object"));
+// console.log(parseModel("object[info][name]"));
+// console.log(parseModel("object.info.name"));
+// console.log(parseModel("test[key]"));
+// console.log(parseModel("test[test1[key]]"));
+// console.log(parseModel('test["a"][key]'));
+// console.log(parseModel("xxx.test[a[a].test1[key]]"));
+// console.log(parseModel('test.xxx.a["asa"][test1[key]]'));
+
 /**
  * 转义字符串对象拆分字符串对象  把后一位key分离出来
  * 两种情况分析1 如果数据是object.info.name的情况下 则返回是 {exp: "object.info",key: "name"}
