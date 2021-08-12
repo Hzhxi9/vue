@@ -165,28 +165,48 @@ export function parse(
   function warnOnce(msg, range) {
     if (!warned) {
       warned = true;
+      /**警告日志函数 */
       warn(msg, range);
     }
   }
 
-  /**TODO */
+  /**
+   * 1. 如果元素没有被处理， 即 el.processed 为 false，则调用 processElement 方法处理节点上的众多属性
+   * 2. 让自己和父元素产生关系，将自己放到父元素的 children 数组中，并设置自己的 parent 属性为 currentParent
+   * 3. 设置自己的子元素，将自己所有非插槽的子元素放到自己的 children 数组中
+   * @param {*} element
+   */
   function closeElement(element) {
+    /**移除节点末尾的空格，当前 pre 标签内的元素除外 */
     trimEndingWhitespace(element);
+
+    /**当前元素不再 pre 节点内，并且也没有被处理过 */
     if (!inVPre && !element.processed) {
+      /**
+       * 分别处理元素节点的 key、ref、插槽、自闭合的 slot 标签、动态组件、class、style、v-bind、v-on、其它指令和一些原生属性
+       */
       element = processElement(element, options);
     }
-    // tree management
+
+    /**
+     * tree management
+     * 处理根节点上存在 v-if、v-else-if、v-else 指令的情况
+     * 如果根节点存在 v-if 指令，则必须还提供一个具有 v-else-if 或者 v-else 的同级别节点，防止根元素不存在+
+     */
     if (!stack.length && element !== root) {
       // allow root elements with v-if, v-else-if and v-else
       if (root.if && (element.elseif || element.else)) {
         if (process.env.NODE_ENV !== "production") {
+          /**检查根元素*/
           checkRootConstraints(element);
         }
+        /** 给根元素设置 ifConditions 属性，root.ifConditions = [{ exp: element.elseif, block: element }, ...] */
         addIfCondition(root, {
           exp: element.elseif,
           block: element,
         });
       } else if (process.env.NODE_ENV !== "production") {
+        /**提示，表示不应该在 根元素 上只使用 v-if，应该将 v-if、v-else-if 一起使用，保证组件只有一个根元素 */
         warnOnce(
           `Component template should contain exactly one root element. ` +
             `If you are using v-if on multiple elements, ` +
@@ -195,26 +215,43 @@ export function parse(
         );
       }
     }
-    if (currentParent && !element.forbidden) {
+
+    /**
+     * 将自己放到父元素的children数组中，然后设置自己的parent属性为当前父元素currentParent
+     */
+    if (
+      currentParent &&
+      !element.forbidden /**如果是style或者是是script 标签并且type属性不存在 或者存在并且是javascript 属性 的时候返回真 */
+    ) {
       if (element.elseif || element.else) {
+        //如果有elseif或者else属性的时候
+        //找到上一个兄弟节点，如果上一个兄弟节点是if，则下一个兄弟节点则是elseif
         processIfConditions(element, currentParent);
       } else {
         if (element.slotScope) {
           // scoped slot
           // keep it in the children list so that v-else(-if) conditions can
           // find it as the prev node.
+
+          /**获取slotTarget作用域标签，如果获取不到则定义为default */
           const name = element.slotTarget || '"default"';
           (currentParent.scopedSlots || (currentParent.scopedSlots = {}))[
             name
           ] = element;
         }
+        /**如果父节点存在currentParent则在父节点添加一个子节点 */
         currentParent.children.push(element);
+        /*当前节点上添加parent属性* */
         element.parent = currentParent;
       }
     }
 
     // final children cleanup
     // filter out scoped slots
+    /**
+     * 设置自己的子元素
+     * 将自己的所有非插槽的子元素设置到 element.children 数组中
+     */
     element.children = element.children.filter((c) => !(c: any).slotScope);
     // remove trailing whitespace node again
     trimEndingWhitespace(element);
@@ -226,7 +263,11 @@ export function parse(
     if (platformIsPreTag(element.tag)) {
       inPre = false;
     }
-    // apply post-transforms
+    /**
+     * apply post-transforms
+     * 分别为 element 执行 model、class、style 三个模块的 postTransform 方法
+     * 但是 web 平台没有提供该方法
+     */
     for (let i = 0; i < postTransforms.length; i++) {
       postTransforms[i](element, options);
     }

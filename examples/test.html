@@ -10,9 +10,10 @@
 </head>
 
 <body>
-  <div id="app">
-    <div v-once="msg"></div>
+  <div id="app" v-if="msg">
+
   </div>
+
 </body>
 <script src="../dist/vue.js"></script>
 <script>
@@ -24,7 +25,7 @@
   new Vue({
     el: "#app",
     data: {
-      msg: "hello vue",
+      msg: false,
       count: 1,
       name: 'name',
       value: 'placeholder',
