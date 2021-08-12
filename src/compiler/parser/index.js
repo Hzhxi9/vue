@@ -751,7 +751,9 @@ function processRawAttrs(el) {
  * @returns
  */
 export function processElement(element: ASTElement, options: CompilerOptions) {
-  /**el.key = val */
+  /**
+   * 设置key值 el.key = val
+   **/
   processKey(element);
 
   /**
@@ -810,8 +812,9 @@ export function processElement(element: ASTElement, options: CompilerOptions) {
  * @param {*} el
  */
 function processKey(el) {
-  /**获取key的属性值 */
+  /**获取key的属性值 比如 i */
   const exp = getBindingAttr(el, "key");
+
   if (exp) {
     /**关于key使用上的异常处理 */
     if (process.env.NODE_ENV !== "production") {
@@ -1298,6 +1301,8 @@ function processComponent(el) {
    * <component :is="compName" inline-template />
    * 组件上存在inline-template 属性，进行标记：el.inlineTemplate = true
    * 表示组件开始和结束标签内的内容作为组件模板出现， 而不是作为插槽分发，方便定义组件模板
+   *
+   * 当 inline-template 这个特殊的特性出现在一个子组件上时，这个组件将会使用其里面的内容作为模板，而不是将其作为被分发的内容。这使得模板的撰写工作更加灵活。
    */
   if (getAndRemoveAttr(el, "inline-template") != null) {
     el.inlineTemplate = true;
@@ -1319,7 +1324,14 @@ function processAttrs(el) {
    * list = [{ name, value, start, end }]
    */
   const list = el.attrsList;
-  let i, l, name, rawName, value, modifiers, syncGen, isDynamic;
+  let i /**循环属性数组索引 */,
+    l /**属性数组长度 */,
+    name /**属性名 */,
+    rawName /**属性名 */,
+    value /**属性值 */,
+    modifiers /**修饰符 */,
+    syncGen /**sync修饰符 */,
+    isDynamic /**是否动态属性 */;
   for (i = 0, l = list.length; i < l; i++) {
     /**属性名 */
     name = rawName = list[i].name;
@@ -1327,7 +1339,7 @@ function processAttrs(el) {
     /**属性值 */
     value = list[i].value;
     if (dirRE.test(name)) {
-      /**说明该属性是一个指令 */
+      /**说明该属性是一个指令， 以v- or @ or : 开头 */
 
       /**
        *  mark element as dynamic
@@ -1337,6 +1349,7 @@ function processAttrs(el) {
 
       /**
        * modifiers，在属性名上解析修饰符，比如 xx.lazy
+       * 比如： {stop: true, prevent: true}
        */
       modifiers = parseModifiers(name.replace(dirRE, ""));
 
@@ -1355,9 +1368,7 @@ function processAttrs(el) {
 
       /** v-bind, <div :id="test"></div> */
       if (bindRE.test(name)) {
-        /**
-         * v-bind 处理 v-bind 指令属性，最后得到 el.attrs 或者 el.dynamicAttrs = [{ name, value, start, end, dynamic }, ...]
-         */
+        /**v-bind 处理 v-bind 指令属性，最后得到 el.attrs 或者 el.dynamicAttrs = [{ name, value, start, end, dynamic }, ...] */
 
         /**属性名，比如：id */
         name = name.replace(bindRE, "");
@@ -1367,6 +1378,8 @@ function processAttrs(el) {
 
         /**是否为动态属性 <div :[id]="test"></div> */
         isDynamic = dynamicArgRE.test(name);
+
+        console.log(name, value, isDynamic);
         if (isDynamic) {
           /**如果是动态属性，则去掉属性两侧的方括号 [] */
           name = name.slice(1, -1);
@@ -1523,6 +1536,12 @@ function processAttrs(el) {
   }
 }
 
+/**
+ * 检查当前虚拟dom  vonde 是否有for指令，或者父组件是否有for指令
+ * 一直找到不存在for指令的父节点
+ * @param {*} el
+ * @returns
+ */
 function checkInFor(el: ASTElement): boolean {
   let parent = el;
   while (parent) {
@@ -1534,13 +1553,23 @@ function checkInFor(el: ASTElement): boolean {
   return false;
 }
 
+/**
+ * 把字符串中的对象拆分成 对象比如 data.object.info.age 变成对象{object:true,info:true,age:true} 返回出去
+ * @param {*} name
+ * @returns
+ */
 function parseModifiers(name: string): Object | void {
+  /**
+   * <div @click.stop.prevent="handleClick"></div>
+   * match = [".stop", ".prevent"]
+   */
   const match = name.match(modifierRE);
   if (match) {
     const ret = {};
     match.forEach((m) => {
       ret[m.slice(1)] = true;
     });
+    /** ret = { stop: true, prevent: true } */
     return ret;
   }
 }
