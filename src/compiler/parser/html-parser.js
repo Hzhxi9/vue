@@ -14,25 +14,47 @@ import { isNonPhrasingTag } from "web/compiler/util";
 import { unicodeRegExp } from "core/util/lang";
 
 // Regular Expressions for parsing tags and attributes
+/**
+ * 解析标记和属性的正则表达式
+ */
 const attribute =
   /^\s*([^\s"'<>\/=]+)(?:\s*(=)\s*(?:"([^"]*)"+|'([^']*)'+|([^\s"'=<>`]+)))?/;
+
+/**匹配动态属性 */
 const dynamicArgAttribute =
   /^\s*((?:v-[\w-]+:|@|:|#)\[[^=]+?\][^\s"'<>\/=]*)(?:\s*(=)\s*(?:"([^"]*)"+|'([^']*)'+|([^\s"'=<>`]+)))?/;
+
 const ncname = `[a-zA-Z_][\\-\\.0-9_a-zA-Z${unicodeRegExp.source}]*`;
+
+/**((?:[a-zA-Z_][\\w\\-\\.]*\\:)?[a-zA-Z_][\\w\\-\\.]*) */
 const qnameCapture = `((?:${ncname}\\:)?${ncname})`;
+
+/**匹配开头必需是< 后面可以忽略是任何字符串  ^<((?:[a-zA-Z_][\\w\\-\\.]*\\:)?[a-zA-Z_][\\w\\-\\.]*) */
 const startTagOpen = new RegExp(`^<${qnameCapture}`);
+
+/**匹配 > 标签 或者/> 闭合标签 */
 const startTagClose = /^\s*(\/?)>/;
+
+/**匹配开头必需是</ 后面可以忽略是任何字符串  ^<\\/((?:[a-zA-Z_][\\w\\-\\.]*\\:)?[a-zA-Z_][\\w\\-\\.]*)[^>]*> */
 const endTag = new RegExp(`^<\\/${qnameCapture}[^>]*>`);
+
+/**匹配html的头文件 <!DOCTYPE html> */
 const doctype = /^<!DOCTYPE [^>]+>/i;
+
 // #7298: escape - to avoid being passed as HTML comment when inlined in page
+/**匹配 开始字符串为<!--任何字符串 */
 const comment = /^<!\--/;
+
+/**匹配开始为 <![ 字符串    匹配这样动态加ie浏览器的 字符串  <!--[if IE 8]><link href="ie8only.css" rel="stylesheet"><![endif]--> */
 const conditionalComment = /^<!\[/;
 
 // Special Elements (can contain anything)
-
+/**判断标签是是否是script,style,textarea */
 export const isPlainTextElement = makeMap("script,style,textarea", true);
+
 const reCache = {};
 
+/**替换 把   &lt;替换 <  ， &gt; 替换 > ， &quot;替换  "， &amp;替换 & ， &#10;替换\n  ，&#9;替换\t */
 const decodingMap = {
   "&lt;": "<",
   "&gt;": ">",
@@ -42,11 +64,17 @@ const decodingMap = {
   "&#9;": "\t",
   "&#39;": "'",
 };
+
+/**匹配 &lt或&gt或&quot或&amp */
 const encodedAttr = /&(?:lt|gt|quot|amp|#39);/g;
+
+/**匹配 &lt或&gt或&quot或&amp或&#10或&#9 */
 const encodedAttrWithNewLines = /&(?:lt|gt|quot|amp|#39|#10|#9);/g;
 
-// #5992
+// #5992 判断标签是否pre,textarea
 const isIgnoreNewlineTag = makeMap("pre,textarea", true);
+
+/**匹配tag标签是pre,textarea，并且第二个参数的第一个字符是回车键 */
 const shouldIgnoreFirstNewline = (tag, html) =>
   tag && isIgnoreNewlineTag(tag) && html[0] === "\n";
 
@@ -345,7 +373,6 @@ export function parseHTML(html, options) {
        * index = 此时的索引
        * start = '<div'
        **/
-
       advance(start[0].length); /**比如 id='app'> */
 
       let end, attr;
@@ -524,11 +551,16 @@ export function parseHTML(html, options) {
     /**
      * 倒序遍历 stack 数组，找到第一个和当前结束标签相同的标签，该标签就是结束标签对应的开始标签的描述对象
      * 理论上，不出异常，stack 数组中的最后一个元素就是当前结束标签的开始标签的描述对象
-     * Find the closest opened tag of the same type
+     *
+     * Find the closest opened tag of the same type 查找最近打开的相同类型的标记
      */
     if (tagName) {
+      /**结束标签名称，将字符串转化成小写  */
       lowerCasedTagName = tagName.toLowerCase();
+
+      /**获取stack堆栈最近的匹配标签 */
       for (pos = stack.length - 1; pos >= 0; pos--) {
+        /**找到最近的标签相等 */
         if (stack[pos].lowerCasedTag === lowerCasedTagName) {
           break;
         }
@@ -552,6 +584,7 @@ export function parseHTML(html, options) {
        * Close all the open elements, up the stack
        */
       for (let i = stack.length - 1; i >= pos; i--) {
+        /**如果stack中找不到tagName 标签的时候就输出警告日志，找不到标签 */
         if (
           process.env.NODE_ENV !== "production" &&
           (i > pos || !tagName) &&
@@ -564,7 +597,13 @@ export function parseHTML(html, options) {
           });
         }
 
-        /**走到这里，说明上面的异常情况都处理完了，调用 options.end 处理正常的结束标签 */
+        /**
+         * 调用options.end函数，删除当前节点的子节点中的最后一个如果是空格或者空的文本节点则删除，
+         * 为stack出栈一个当前标签，为currentParent变量获取到当前节点的父节点
+         *
+         * 走到这里，说明上面的异常情况都处理完了，调用 options.end 处理正常的结束标签
+         *
+         **/
         if (options.end) {
           options.end(stack[i].tag, start, end);
         }
@@ -578,6 +617,15 @@ export function parseHTML(html, options) {
       lastTag = pos && stack[pos - 1].tag;
     } else if (lowerCasedTagName === "br") {
       /**当前处理的标签为 <br /> 标签 */
+
+      /**
+       * 标签开始函数， 创建一个ast标签dom，  判断获取v-for属性是否存在如果有则转义 v-for指令 把for，alias，iterator1，iterator2属性添加到虚拟dom中
+       * 获取v-if属性，为el虚拟dom添加 v-if，v-eles，v-else-if 属性
+       * 获取v-once 指令属性，如果有有该属性 为虚拟dom标签 标记事件 只触发一次则销毁
+       * 校验属性的值，为el添加muted， events，nativeEvents，directives，  key， ref，slotName或者slotScope或者slot，component或者inlineTemplate 标志 属性
+       * 标志当前的currentParent当前的 element
+       * 为parse函数 stack标签堆栈 添加一个标签
+       **/
       if (options.start) {
         options.start(tagName, [], true, start, end);
       }
@@ -586,8 +634,12 @@ export function parseHTML(html, options) {
       if (options.start) {
         options.start(tagName, [], false, start, end);
       }
-      /**当前处理的标签为 </p> 标签  */
+
       if (options.end) {
+        /**
+         * 删除当前节点的子节点中的最后一个如果是空格或者空的文本节点则删除，
+         * 为stack出栈一个当前标签，为currentParent变量获取到当前节点的父节点
+         */
         options.end(tagName, start, end);
       }
     }
