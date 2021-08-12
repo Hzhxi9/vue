@@ -11,8 +11,7 @@
 
 <body>
   <div id="app">
-    <a href="www.baidu.com"></a>
-    <br class="br" />
+    <div v-once="msg"></div>
   </div>
 </body>
 <script src="../dist/vue.js"></script>
@@ -27,7 +26,12 @@
     data: {
       msg: "hello vue",
       count: 1,
-      name: 'name'
+      name: 'name',
+      value: 'placeholder',
+      o: {
+        name: 'name',
+        age: 'age'
+      }
     },
     computed: {
       message() {

@@ -318,8 +318,27 @@ export function parse(
         attrs = guardIESVGBug(attrs);
       }
 
-      /**生成当前标签的ast对象 */
+      /**
+       * 生成当前标签的ast对象
+       * {
+       *  attrs: [{name: "id", value: "\"app\"", dynamic: undefined, start: 5, end: 13}],
+       *  attrsList: [{name: "id", value: "app", start: 5, end: 13}],
+       *  attrsMap: {id: "app"},
+       *  children: [],
+       *  end: 87,
+       *  parent: undefined,
+       *  plain: false,
+       *  rawAttrsMap: {id: {name: "id", value: "app", start: 5, end: 13}},
+       *  start: 0,
+       *  static:true,
+       *  staticInFor: false,
+       *  staticRoot: false,
+       *  tag: "div",
+       *  type: 1,
+       * }
+       **/
       let element: ASTElement = createASTElement(tag, attrs, currentParent);
+
       if (ns) {
         /**添加命名空间 */
         element.ns = ns;
@@ -357,7 +376,12 @@ export function parse(
       /**
        * 非服务端渲染的情况下，模版中不应该出现 style、script 标签
        */
-      if (isForbiddenTag(element) && !isServerRendering()) {
+      if (
+        isForbiddenTag(
+          element
+        ) /**如果是style或者是是script 标签并且type属性不存在 或者存在并且是javascript 属性 的时候返回真 */ &&
+        !isServerRendering() /**不是在服务器node环境下 */
+      ) {
         element.forbidden = true;
         process.env.NODE_ENV !== "production" &&
           warn(
@@ -377,13 +401,19 @@ export function parse(
        * 分别处理了 input 为 checkbox、radio 和 其它的情况
        * input 具体是哪种情况由 el.ifConditions 中的条件来判断
        * <input v-mode="test" :type="checkbox or radio or other(比如 text)" />
+       *
+       *
+       * 这里要进入并走完preTransforms要求type为动态属性
        */
       for (let i = 0; i < preTransforms.length; i++) {
         element = preTransforms[i](element, options) || element;
       }
 
       if (!inVPre) {
-        /**表示 element 是否存在 v-pre 指令，存在则设置 element.pre = true */
+        /**
+         * 表示 element 是否存在 v-pre 指令，存在则设置 element.pre = true
+         * 检查标签是否有v-pre 指令 含有 v-pre 指令的标签里面的指令则不会被编译
+         */
         processPre(element);
         if (element.pre) {
           /**存在 v-pre 指令，则设置 inVPre 为 true */
@@ -394,10 +424,12 @@ export function parse(
       if (platformIsPreTag(element.tag)) {
         inPre = true;
       }
+
       if (inVPre) {
         /**
          * 说明标签上存在 v-pre 指令，这样的节点只会渲染一次，将节点上的属性都设置到 el.attrs 数组对象中，作为静态属性，数据更新时不会渲染这部分内容
          * 设置 el.attrs 数组对象，每个元素都是一个属性对象 { name: attrName, value: attrVal, start, end }处。
+         * 浅拷贝属性 把虚拟dom的attrsList拷贝到attrs中,如果没有pre块，标记plain为true
          */
         processRawAttrs(element);
       } else if (!element.processed) {
@@ -405,19 +437,27 @@ export function parse(
 
         /**
          * 处理 v-for 属性，得到 element.for = 可迭代对象 element.alias = 别名
+         * 判断获取v-for属性是否存在如果有则转义 v-for指令 把for，alias，iterator1，iterator2属性添加到虚拟dom中
          */
         processFor(element);
         /**
          * 处理 v-if、v-else-if、v-else
          * 得到 element.if = "exp"，element.elseif = exp, element.else = true
          * v-if 属性会额外在 element.ifConditions 数组中添加 { exp, block } 对象
+         *
+         * 获取v-if属性，为el虚拟dom添加 v-if，v-eles，v-else-if 属性
          */
         processIf(element);
         /**
          * 处理 v-once 指令，得到 element.once = true
+         *
+         * 获取v-once 指令属性，如果有有该属性 为虚拟dom标签 标记事件 只触发一次则销毁
+         *
+         * 只渲染元素和组件一次。随后的重新渲染，元素/组件及其所有的子节点将被视为静态内容并跳过。这可以用于优化更新性能。
          **/
         processOnce(element);
       }
+
       /**如果 root 不存在，则表示当前处理的元素为第一个元素，即组件的 根 元素 */
       if (!root) {
         root = element;
@@ -430,6 +470,7 @@ export function parse(
       if (!unary) {
         /**非自闭合标签，通过 currentParent 记录当前元素，下一个元素在处理的时候，就知道自己的父元素是谁 */
         currentParent = element;
+
         /**
          * 然后将 element push 到 stack 数组，将来处理到当前元素的闭合标签时再拿出来
          * 将当前标签的 ast 对象 push 到 stack 数组中，这里需要注意，在调用 options.start 方法
@@ -792,6 +833,8 @@ export function processFor(el: ASTElement) {
   /**获取el上的v-for属性值 */
   if ((exp = getAndRemoveAttr(el, "v-for"))) {
     /**
+     * 比如 exp = "v-for = in 5"
+     *
      * 解析v-for的表达式
      * 得到{ for: 可迭代对象， alias: 别名 }
      * 比如{ for: arr, alias: item }
@@ -821,7 +864,15 @@ type ForParseResult = {
  * @returns { for: iterator, alias: string  } { for: 迭代器，比如数组, alias: 别名，比如item }
  */
 export function parseFor(exp: string): ?ForParseResult {
-  /**正则匹配回去表达式 in | of */
+  /**
+   * 正则匹配表达式 in | of
+   *
+   * {
+   *   0: "i in 5",
+   *   1: "i", or "(i, key, index)" or "(i, index)"
+   *   2: "5"
+   * }
+   **/
   const inMatch = exp.match(forAliasRE);
 
   if (!inMatch) return;
@@ -829,18 +880,34 @@ export function parseFor(exp: string): ?ForParseResult {
   /**for = "迭代对象" */
   res.for = inMatch[2].trim();
 
-  /**别名 */
+  /**别名 比如 i or i,index or i,key,index  */
   const alias = inMatch[1].trim().replace(stripParensRE, "");
+
+  /**
+   *  iteratorMatch的情况
+   *  1. 当只有i时， 匹配到 null
+   *  2. 当有i,index时， 匹配到 [",index", "index"]
+   *  3. 当有i,key,index时，匹配到 [",key,index","key","index"]
+   */
   const iteratorMatch = alias.match(forIteratorRE);
+
   if (iteratorMatch) {
+    /**获取别名 i */
     res.alias = alias.replace(forIteratorRE, "").trim();
+
+    /**获取第二个参数，数组是index, 对象是key */
     res.iterator1 = iteratorMatch[1].trim();
+
     if (iteratorMatch[2]) {
+      /**如果存在第三个参数， 设置对象key */
       res.iterator2 = iteratorMatch[2].trim();
     }
   } else {
+    /**只有一个参数，走这里 */
     res.alias = alias;
   }
+
+  /**{for: "o", alias: "i", iterator1: "key", iterator2: "index"} */
   return res;
 }
 
@@ -852,8 +919,13 @@ export function parseFor(exp: string): ?ForParseResult {
  * @param {*} el
  */
 function processIf(el) {
-  /**获取v-if属性的值， 比如<div v-if="value"></div> */
+  /**
+   * 获取v-if属性的值，
+   * 比如<div v-if="value"></div>
+   * exp: value
+   **/
   const exp = getAndRemoveAttr(el, "v-if");
+
   if (exp) {
     /**el.if = exp */
     el.if = exp;
@@ -929,6 +1001,14 @@ export function addIfCondition(el: ASTElement, condition: ASTIfCondition) {
   if (!el.ifConditions) {
     el.ifConditions = [];
   }
+  /**
+   * [
+   *  {
+   *    exp: 'value',
+   *    block: {type: 1, tag: "div", attrsList: Array(0), attrsMap: {…}, rawAttrsMap: {…}, …} ast对象
+   *  }
+   * ]
+   */
   el.ifConditions.push(condition);
 }
 
@@ -1462,18 +1542,33 @@ const ieNSBug = /^xmlns:NS\d+/;
 const ieNSPrefix = /^NS\d+:/;
 
 /* istanbul ignore next */
+/**
+ * 防止ie svg的bug
+ * 替换属性含有ns+数字 去除NS+数字
+ * @param {*} attrs
+ * @returns
+ */
 function guardIESVGBug(attrs) {
   const res = [];
   for (let i = 0; i < attrs.length; i++) {
     const attr = attrs[i];
     if (!ieNSBug.test(attr.name)) {
-      attr.name = attr.name.replace(ieNSPrefix, "");
+      /**匹配字符串， xmlns： NS+数字 */
+      attr.name = attr.name.replace(
+        ieNSPrefix /**匹配 字符串    NS+数字 */,
+        ""
+      );
       res.push(attr);
     }
   }
   return res;
 }
 
+/**
+ * 检查指令的命名值 不能为for 或者 for中的遍历的item
+ * @param {*} el
+ * @param {*} value
+ */
 function checkForAliasModel(el, value) {
   let _el = el;
   while (_el) {
