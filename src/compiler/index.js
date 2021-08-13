@@ -50,7 +50,7 @@ export const createCompiler = createCompilerCreator(
      *
      * 标记每个节点是否为静态节点，然后进一步标记静态根节点
      * 这样在后续更新中就可以跳过这些静态节点
-     * 病态静态根节点，用于生成渲染函数阶段，生成静态根节点的渲染函数
+     * 标记静态根节点，用于生成渲染函数阶段，生成静态根节点的渲染函数
      **/
     if (options.optimize !== false) {
       optimize(ast, options);
