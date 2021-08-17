@@ -102,17 +102,27 @@ export function toNumber(val: string): number | string {
 /**
  * Make a map and return a function for checking if a key
  * is in that map.
+ * map 对象中的[name1, name2, name3, name4]  变成这样的 map{ name1:true, name2:true, name3:true, name4:true }
+ * 并且传进一个key值取值，这里用到策略者模式
  */
 export function makeMap(
   str: string,
   expectsLowerCase?: boolean
 ): (key: string) => true | void {
+  /**创建一个新的空对象 */
   const map = Object.create(null);
+
+  /**按字符串，分割 */
   const list: Array<string> = str.split(",");
+
   for (let i = 0; i < list.length; i++) {
+    /**map 对象中的[name1, name2, name3, name4]  变成这样的 map{ name1:true, name2:true, name3:true, name4:true } */
     map[list[i]] = true;
   }
-  return expectsLowerCase ? (val) => map[val.toLowerCase()] : (val) => map[val];
+  return expectsLowerCase
+    ? (val) =>
+        map[val.toLowerCase()] /**返回一个柯里化函数 toLowerCase转换成小写 */
+    : (val) => map[val] /**返回一个柯里化函数 并且把map中添加一个 属性建 */;
 }
 
 /**

@@ -27,6 +27,7 @@ export const createCompiler = createCompilerCreator(
    * 静态渲染函数放到code.staticRenderFns数组中
    * code.render为动态渲染函数
    * 在将来渲染时执行渲染函数得到VNode
+   *
    * @param {*} template 模板字符串
    * @param {*} options 配置项
    * @returns
