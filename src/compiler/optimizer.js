@@ -18,6 +18,15 @@ const genStaticKeysCached = cached(genStaticKeys);
  *    create fresh nodes for them on each re-render;
  * 2. Completely skip them in the patching process.
  *
+ * 优化器的目标:遍历生成的模板AST树
+ *    检测纯静态的子树，即永远不需要更改的DOM。
+ * 1. 把它们变成常数，这样我们就不需要在每次重新渲染时为它们创建新的节点;
+ * 2. 在修补过程中完全跳过它们。
+ *
+ * 循环递归虚拟node，标记是不是静态节点
+ *
+ * 根据node.static或者 node.once 标记staticRoot的状态
+ *
  * 优化
  *    遍历AST， 标记每个节点是静态节点还是动态节点，然后标记静态根节点
  *    后续更新过程中就不需要在关注这些节点
@@ -28,10 +37,11 @@ export function optimize(root: ?ASTElement, options: CompilerOptions) {
   /**
    * options.staticKey = 'staticClass, staticStyle'
    * isStaticKey = function(val){ return map[val] }
+   * 匹配type,tag,attrsList,attrsMap,plain,parent,children,attrs + staticKeys 字符串
    */
   isStaticKey = genStaticKeysCached(options.staticKeys || "");
 
-  /**平台保留标签 */
+  /**平台保留标签，判断是不是真的是 html 原有的标签 或者svg标签 */
   isPlatformReservedTag = options.isReservedTag || no;
 
   /**
@@ -111,11 +121,25 @@ function markStatic(node: ASTNode) {
   }
 }
 
+/**
+ * 进一步标记静态根节点，一个节点要成为静态根节点，需要满足以下条件
+ * 1. 节点本身是静态节点，而且有子节点，而且子节点不只是一个文本节点，则标记为静态根
+ * 2. 静态根节点不能只有静态文本的子节点， 因为这样收益太低，这种情况下始终更新它就好了
+ * @param {*} node 当前节点
+ * @param {*} isInFor 当前节点是否被包裹在v-for指令所在的节点内
+ * @returns
+ */
 function markStaticRoots(node: ASTNode, isInFor: boolean) {
   if (node.type === 1) {
+    /**虚拟 dom 节点 */
     if (node.static || node.once) {
+      /**
+       * 节点是静态的或者节点上有v-once指令
+       * 标记node.staticInFor = true or false
+       */
       node.staticInFor = isInFor;
     }
+
     // For a node to qualify as a static root, it should have children that
     // are not just static text. Otherwise the cost of hoisting out will
     // outweigh the benefits and it's better off to just always render it fresh.
@@ -124,16 +148,27 @@ function markStaticRoots(node: ASTNode, isInFor: boolean) {
       node.children.length &&
       !(node.children.length === 1 && node.children[0].type === 3)
     ) {
+      /**
+       * 节点本身是静态节点，而且有子节点，而且子节点不只是一个文本节点，则标记为静态根 => node.staticRoot = true，否则为非静态根
+       */
       node.staticRoot = true;
       return;
     } else {
       node.staticRoot = false;
     }
+
+    /**
+     * 当前节点不是静态根节点的时候，递归遍历其子节点，标记静态根
+     */
     if (node.children) {
       for (let i = 0, l = node.children.length; i < l; i++) {
         markStaticRoots(node.children[i], isInFor || !!node.for);
       }
     }
+
+    /**
+     * 如果节点存在 v-if、v-else-if、v-else 指令，则为 block 节点标记静态根
+     */
     if (node.ifConditions) {
       for (let i = 1, l = node.ifConditions.length; i < l; i++) {
         markStaticRoots(node.ifConditions[i].block, isInFor);
