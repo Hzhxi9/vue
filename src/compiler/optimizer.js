@@ -37,6 +37,7 @@ export function optimize(root: ?ASTElement, options: CompilerOptions) {
   /**
    * options.staticKey = 'staticClass, staticStyle'
    * isStaticKey = function(val){ return map[val] }
+   * 函数，获取静态key，比如staticClass， staticStyle
    * 匹配type,tag,attrsList,attrsMap,plain,parent,children,attrs + staticKeys 字符串
    */
   isStaticKey = genStaticKeysCached(options.staticKeys || "");
@@ -99,6 +100,7 @@ function markStatic(node: ASTNode) {
       /**递归终止条件，如果节点不是平台保留标签  && 也不是 slot 标签 && 也不是内联模版，则直接结束 */
       return;
     }
+
     /**遍历所有子节点，递归调用markStatic来标记这些子节点的static属性 */
     for (let i = 0, l = node.children.length; i < l; i++) {
       const child = node.children[i];
@@ -136,6 +138,8 @@ function markStaticRoots(node: ASTNode, isInFor: boolean) {
       /**
        * 节点是静态的或者节点上有v-once指令
        * 标记node.staticInFor = true or false
+       *
+       * 进来标记当前节点是否被包裹在v-for指令所在的节点内部
        */
       node.staticInFor = isInFor;
     }
@@ -158,6 +162,7 @@ function markStaticRoots(node: ASTNode, isInFor: boolean) {
     }
 
     /**
+     * 处理子节点
      * 当前节点不是静态根节点的时候，递归遍历其子节点，标记静态根
      */
     if (node.children) {
@@ -205,10 +210,10 @@ function isStatic(node: ASTNode): boolean {
         !isBuiltInTag(node.tag) /**没有 slot,component*/ && // not a built-in
         isPlatformReservedTag(
           node.tag
-        ) /**not a component 不是一个组件   保留标签 判断是不是真的是 html 原有的标签 或者svg标签*/ && // not a component
+        ) /**not a component 不是一个组件 保留标签 判断是不是真的是 html 原有的标签 或者svg标签*/ && // not a component
         !isDirectChildOfTemplateFor(
           node
-        ) /** 判断当前ast 虚拟dom 的父标签 如果不是template则返回false，如果含有v-for则返回true */ &&
+        ) /** 判断当前ast虚拟dom的父标签 如果不是template则返回false，如果含有v-for则返回true */ &&
         Object.keys(node).every(isStaticKey))
     ) /**node的key必须每一项都符合   匹配type,tag,attrsList,attrsMap,plain,parent,children,attrs + staticKeys 的字符串 */
   );
