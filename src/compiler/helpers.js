@@ -171,6 +171,7 @@ export function addHandler(
   // this is technically browser-specific, but at least for now browsers are
   // the only target envs that have right/middle clicks.
   /**
+   * 处理鼠标相关的按键事件
    * 标准化 click.right 和 click.middle，它们实际上不会被真正的触发，从技术讲他们是它们
    * 是特定于浏览器的，但至少目前位置只有浏览器才具有右键和中间键的点击
    */
@@ -201,6 +202,11 @@ export function addHandler(
   if (modifiers.capture) {
     delete modifiers.capture;
     /**给带有 capture 修饰符的属性，加上 ! 标记  将事件标记为捕获*/
+
+    /**
+     * 动态属性：_p(attrName, !)
+     * 静态属性: !attrName
+     */
     name = prependModifierMarker("!", name, dynamic);
   }
   if (modifiers.once) {

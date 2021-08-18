@@ -877,9 +877,12 @@ function processKey(el) {
 }
 
 /**
- * 处理元素上的ref属性
+ * 处理元素上的ref属性,得到el.ref = val
  * el.ref = refVal
  * el.refInFor = boolean
+ *
+ * 如果带有ref属性的标签呗包裹在含有v-for指令的元素内部
+ * 标记el.refInFor = true
  * @param {*} el
  */
 function processRef(el) {
@@ -1172,7 +1175,7 @@ function processSlotContent(el) {
       /**
        *
        * v-slot在template标签上，得到v-slot的值
-       * v-slot on <template>
+       * v-slot on <template v-slot="head" ></template>
        */
       const slotBinding = getAndRemoveAttrByRegex(el, slotRE);
       if (slotBinding) {
@@ -1240,7 +1243,10 @@ function processSlotContent(el) {
           }
         }
         // add the component's children to its default slot
-        /**将组件的孩子添加到它的默认插槽内 */
+        /**
+         * 将组件的孩子添加到它的默认插槽内
+         * <comp><template>xxx</template></comp>
+         **/
         const slots = el.scopedSlots || (el.scopedSlots = {});
         /**获取插槽名称以及是否为动态插槽 */
         const { name, dynamic } = getSlotName(slotBinding);
@@ -1293,6 +1299,7 @@ function getSlotName(binding) {
 }
 
 /**
+ * 处理slot标签
  * handle <slot/> outlets 处理自闭和slot标签
  * 得到插槽名称, el.slotName
  * @param {*} el
@@ -1314,7 +1321,9 @@ function processSlotOutlet(el) {
 }
 
 /**
+ *
  * 处理动态组件,<component :is="compName" />
+ * compName 响应式的，可以动态渲染组件
  * 得到el.component = compName
  * @param {*} el
  */
@@ -1326,7 +1335,11 @@ function processComponent(el) {
   }
   /**
    * <component :is="compName" inline-template />
-   * 组件上存在inline-template 属性，进行标记：el.inlineTemplate = true
+   *
+   *  <component :is="compName" inline-template>children</component >
+   * 组件上存在inline-template 属性，进行标记：el.inlineTemplate = true， 将标签中的子元素不做插槽处理，
+   * 这时候会将这些子元素作为组件内容来定义
+   *
    * 表示组件开始和结束标签内的内容作为组件模板出现， 而不是作为插槽分发，方便定义组件模板
    *
    * 当 inline-template 这个特殊的特性出现在一个子组件上时，这个组件将会使用其里面的内容作为模板，而不是将其作为被分发的内容。这使得模板的撰写工作更加灵活。

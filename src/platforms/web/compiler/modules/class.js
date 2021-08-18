@@ -15,6 +15,7 @@ import { getAndRemoveAttr, getBindingAttr, baseWarn } from "compiler/helpers";
 function transformNode(el: ASTElement, options: CompilerOptions) {
   /**日志 */
   const warn = options.warn || baseWarn;
+
   /**获取元素上静态class属性的值xx,<div class="xx"></div> */
   const staticClass = getAndRemoveAttr(el, "class");
 
@@ -38,6 +39,7 @@ function transformNode(el: ASTElement, options: CompilerOptions) {
   if (staticClass) {
     el.staticClass = JSON.stringify(staticClass);
   }
+
   /**获取动态绑定的class属性值，并赋值给el.classBinding */
   const classBinding = getBindingAttr(el, "class", false /* getStatic */);
   if (classBinding) {
