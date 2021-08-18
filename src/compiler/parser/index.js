@@ -169,7 +169,7 @@ export function parse(
   /**界定符,比如{{}}*/
   delimiters = options.delimiters;
 
-  /**解析的中间结果都放在这里 */
+  /**解析的中间结果都放在这里，存放标签的ast对象 */
   const stack = [];
   /**是否保留空白元素 */
   const preserveWhitespace = options.preserveWhitespace !== false;
@@ -274,7 +274,7 @@ export function parse(
     // filter out scoped slots
     /**
      * 设置自己的子元素
-     * 将自己的所有非插槽的子元素设置到 element.children 数组中
+     * 将自己的所有非作用域插槽的子元素设置到 element.children 数组中
      */
     element.children = element.children.filter((c) => !(c: any).slotScope);
     // remove trailing whitespace node again
@@ -469,6 +469,11 @@ export function parse(
        *
        *
        * 这里要进入并走完preTransforms要求type为动态属性
+       *
+       * 处理带有v-model指令的input标签
+       * 处理标签上的众多属性
+       * 比如v-for、v-if、:type、其他指令、属性等等
+       * 最后将结果都记录在element对象中
        */
       for (let i = 0; i < preTransforms.length; i++) {
         element = preTransforms[i](element, options) || element;

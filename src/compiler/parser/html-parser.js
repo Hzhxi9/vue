@@ -95,6 +95,7 @@ function decodeAttr(value, shouldDecodeNewlines) {
  * @param {*} options 配置项
  */
 export function parseHTML(html, options) {
+  /**存放标签的对象属性 { tag, lowerCasedTag, attrs, start, end } */
   const stack = [];
 
   const expectHTML = options.expectHTML;
