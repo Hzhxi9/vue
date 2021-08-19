@@ -23,6 +23,14 @@ export function pluckModuleFunction<F: Function>(
   return modules ? modules.map((m) => m[key]).filter((_) => _) : [];
 }
 
+/**
+ * 在虚拟dom中添加prop属性
+ * @param {*} el
+ * @param {*} name
+ * @param {*} value
+ * @param {*} range
+ * @param {*} dynamic
+ */
 export function addProp(
   el: ASTElement,
   name: string,

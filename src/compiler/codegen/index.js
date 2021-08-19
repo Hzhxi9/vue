@@ -49,15 +49,17 @@ export class CodegenState {
     this.dataGenFns = pluckModuleFunction(options.modules, "genData");
 
     /**
+     * web平台  '../web/platform/compiler/directives'
      * options.directives= {
      *    model: model, //根据判断虚拟dom的标签类型是什么？给相应的标签绑定 相应的 v-model 双数据绑定代码函数
      *    text: text, // 为虚拟dom添加textContent 属性
      *    html: html//  为虚拟dom添加innerHTML 属性
      * }
+     *
      * 基本指令参数
      * var baseDirectives = {on: on, //包装事件  bind: bind$1, //包装数据  cloak: noop //空函数 }
      *
-     * 扩展指令，on,bind，cloak,方法
+     * 扩展指令，on,bind,cloak方法
      */
     this.directives = extend(extend({}, baseDirectives), options.directives);
 
@@ -69,7 +71,7 @@ export class CodegenState {
       !!el.component || !isReservedTag(el.tag);
     this.onceId = 0;
 
-    /**静态渲染方法 */
+    /**静态渲染方法,存放生成静态渲染函数 */
     this.staticRenderFns = [];
     this.pre = false;
   }
@@ -82,8 +84,8 @@ export type CodegenResult = {
 
 /**
  * 从AST生成渲染函数
- * @param {*} ast
- * @param {*} options
+ * @param {*} ast ast对象
+ * @param {*} options 编译选项
  * @returns  { render: `with(this){return _c(tag, data, children) }`, staticRenderFns: state.staticRenderFns }
  */
 export function generate(
@@ -91,7 +93,9 @@ export function generate(
   options: CompilerOptions
 ): CodegenResult {
   /**
-   * 实例话CodegenState类，生成代码的时候需要用其中一些东西
+   * 实例化CodegenState类， 参数是编译选项，最终得到state大部分属性和options一样， 生成代码的时候需要用其中一些东西
+   *
+   * state.staticRenderFns = [], state.directives
    *
    * 生成状态
    * 1. 扩展指令，on,bind，cloak,方法
