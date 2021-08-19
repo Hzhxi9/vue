@@ -55,8 +55,8 @@ const modifierCode: { [key: string]: string } = {
 
 /**
  * 生成自定义事件的代码
- * 动态：'nativeOn|on_d(staticHandlers, [dynamicHandlers])'
- * 静态：`nativeOn|on${staticHandlers}`
+ * 动态：'nativeOn|on:_d(staticHandlers, [dynamicHandlers])'
+ * 静态：`nativeOn|on:${staticHandlers}`
  * @param {*} events
  * @param {*} isNative
  * @returns
@@ -91,10 +91,10 @@ export function genHandlers(
   /**去掉末尾的逗号 */
   staticHandlers = `{${staticHandlers.slice(0, -1)}}`;
   if (dynamicHandlers) {
-    /**动态，on_d(staticHandles, [dynamicHandlers]) */
+    /**动态，on:_d(staticHandles, [dynamicHandlers]) */
     return prefix + `_d(${staticHandlers},[${dynamicHandlers.slice(0, -1)}])`;
   } else {
-    /**静态，`on${staticHandlers}` */
+    /**静态，`on:${staticHandlers}` */
     return prefix + staticHandlers;
   }
 }
