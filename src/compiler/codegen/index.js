@@ -27,14 +27,49 @@ export class CodegenState {
 
   constructor(options: CompilerOptions) {
     this.options = options;
+    /**警告日志输出函数 */
     this.warn = options.warn || baseWarn;
+
+    /*
+     * 为虚拟dom添加基本需要的属性
+     * modules=modules$1=[
+     *   {staticKeys: ['staticClass'], transformNode: transformNode, genData: genData},  // class 转换函数
+     *   {staticKeys: ['staticStyle'], transformNode: transformNode$1, genData: genData$1 } //style 转换函数
+     *   {preTransformNode: preTransformNode}
+     * ]
+     *
+     * 循环过滤数组或者对象的值，根据key循环 过滤对象或者数组[key]值，如果不存在则丢弃，如果有相同多个的key值，返回多个值的数组
+     * 这里返回是空
+     */
     this.transforms = pluckModuleFunction(options.modules, "transformCode");
+
+    /**
+     * 获取到一个数组，数组中有两个函数genData和genData$1
+     */
     this.dataGenFns = pluckModuleFunction(options.modules, "genData");
+
+    /**
+     * options.directives= {
+     *    model: model, //根据判断虚拟dom的标签类型是什么？给相应的标签绑定 相应的 v-model 双数据绑定代码函数
+     *    text: text, // 为虚拟dom添加textContent 属性
+     *    html: html//  为虚拟dom添加innerHTML 属性
+     * }
+     * 基本指令参数
+     * var baseDirectives = {on: on, //包装事件  bind: bind$1, //包装数据  cloak: noop //空函数 }
+     *
+     * 扩展指令，on,bind，cloak,方法
+     */
     this.directives = extend(extend({}, baseDirectives), options.directives);
+
+    /**留标签 判断是不是真的是 html 原有的标签 或者svg标签 */
     const isReservedTag = options.isReservedTag || no;
+
+    /**也许是组件 */
     this.maybeComponent = (el: ASTElement) =>
       !!el.component || !isReservedTag(el.tag);
     this.onceId = 0;
+
+    /**静态渲染方法 */
     this.staticRenderFns = [];
     this.pre = false;
   }
@@ -57,6 +92,10 @@ export function generate(
 ): CodegenResult {
   /**
    * 实例话CodegenState类，生成代码的时候需要用其中一些东西
+   *
+   * 生成状态
+   * 1. 扩展指令，on,bind，cloak,方法
+   * 2. dataGenFns 获取到一个数组，数组中有两个函数genData和genData$1
    */
   const state = new CodegenState(options);
   /**
@@ -71,6 +110,8 @@ export function generate(
    *   表示即诶单的规范化类型， 不是重点， 不需要关注
    *
    * 当然code并不一定就是_c, 也有可能是其他的，比如整个组件都是静态的, 则结果就为_m(0)
+   *
+   * 根据el判断是否是组件，或者是否含有v-once，v-if,v-for,是否有template属性，或者是slot插槽，转换style，css等转换成虚拟dom需要渲染的参数函数
    */
   const code = ast
     ? ast.tag === "script"
@@ -78,15 +119,18 @@ export function generate(
       : genElement(ast, state)
     : '_c("div")';
   return {
+    /**with 绑定js的this 缩写 */
     render: `with(this){return ${code}}`,
+    /**空数组 */
     staticRenderFns: state.staticRenderFns,
   };
 }
 
 /**
- *
- * @param {*} el
- * @param {*} state
+ * 初始化扩展指令，on,bind，cloak,方法， dataGenFns 获取到一个数组，数组中有两个函数genData和genData$1
+ * genElement根据el判断是否是组件，或者是否含有v-once，v-if,v-for,是否有template属性，或者是slot插槽，转换style，css等转换成虚拟dom需要渲染的参数函数
+ * @param {*} el ast对象或者虚拟dom
+ * @param {*} state 渲染虚拟dom的一些方法
  * @returns
  */
 export function genElement(el: ASTElement, state: CodegenState): string {
@@ -103,6 +147,9 @@ export function genElement(el: ASTElement, state: CodegenState): string {
     return genStatic(el, state);
   } else if (el.once && !el.onceProcessed) {
     /**
+     * 不需要表达式
+     * 详细：只渲染元素和组件一次。随后的重新渲染，元素/组件及其所有的子节点将被视为静态内容并跳过。这可以用于优化更新性能
+     *
      * 处理带有v-once指令的节点， 结果会有三种：
      *    1. 当前节点存在v-if指令，得到一个三元表达式， condition? render1: render2
      *    2. 当前节点是一个包含在v-for指令内部的静态节点，得到`_o(_c(tag, data, children), number, key)`
@@ -312,6 +359,8 @@ function genIfConditions(
   /**返回结果是一个三元表达式字符串，condition ? 渲染函数1 : 渲染函数2 */
   if (condition.exp) {
     /**
+     * 判断if指令参数是否存在 如果存在则递归condition.block 数据此时ifProcessed 变为true 下次不会再进来
+     *
      * 如果 condition.exp 条件成立，则得到一个三元表达式，
      * 如果条件不成立，则通过递归的方式找 conditions 数组中下一个元素，
      * 直到找到条件成立的元素，然后返回一个三元表达式
@@ -350,11 +399,18 @@ export function genFor(
 ): string {
   /**v-for 的迭代器，比如 一个数组 */
   const exp = el.for;
+
   /**迭代时的别名 */
   const alias = el.alias;
+
   /**iterator 为 v-for = "(item ,idx) in obj" 时会有，比如 iterator1 = idx */
-  const iterator1 = el.iterator1 ? `,${el.iterator1}` : "";
-  const iterator2 = el.iterator2 ? `,${el.iterator2}` : "";
+  const iterator1 = el.iterator1
+    ? `,${el.iterator1}`
+    : ""; /**iterator1  "index" 索引 */
+
+  const iterator2 = el.iterator2
+    ? `,${el.iterator2}`
+    : ""; /**iterator2: "key" */
 
   if (
     process.env.NODE_ENV !== "production" &&
@@ -546,6 +602,8 @@ export function genData(el: ASTElement, state: CodegenState): string {
 
 /**
  * 运行指令的编译方法，如果指令存在运行时任务，则返回 directives: [{ name, rawName, value, arg, modifiers }, ...}]
+ *
+ * 初始化指令属性参数,把ast对象中的指令属性对象提取出来成数组只保留name和rawName这两个key 比如<div v-info></div> 则变成 directives:[{name:"info",rawName:"v-info"}]
  * @param {*} el
  * @param {*} state
  * @returns
@@ -564,8 +622,21 @@ function genDirectives(el: ASTElement, state: CodegenState): string | void {
   let hasRuntime = false;
   let i, l, dir, needRuntime;
 
+  /**
+   * 为虚拟dom 添加一个 指令directives属性 对象
+   *  addDirective(
+   *    el, //虚拟dom vonde
+   *    name, //获取 view 原始属性的名称 不包含 v- : @的
+   *    rawName,// 获取 view 原始属性的名称 包含 v- : @的
+   *    value, // 属性view 属性上的值
+   *    arg, // efg:hig 属性名称冒号后面多出来的标签
+   *    modifiers
+   *  );
+   **/
+
   /**遍历指令数组 */
   for (i = 0, l = dirs.length; i < l; i++) {
+    /**一个虚拟dom可能会有能绑定多个指令 */
     dir = dirs[i];
     needRuntime = true;
     /**获取节点当前指令的处理方法，比如 web 平台的 v-html、v-text、v-model */
@@ -742,12 +813,12 @@ export function genChildren(
   if (children.length) {
     /**第一个子节点 */
     const el: any = children[0];
-    // optimize single v-for
+    // optimize single v-for 优化单 v-for
     if (
-      children.length === 1 &&
+      children.length === 1 /**如果只有一个子节点 */ &&
       el.for &&
-      el.tag !== "template" &&
-      el.tag !== "slot"
+      el.tag !== "template" /**节点不是template */ &&
+      el.tag !== "slot" /**节点不是slot */
     ) {
       /**
        * 优化，只有一个子节点 && 子节点的上有 v-for 指令 && 子节点的标签不为 template 或者 slot
@@ -763,12 +834,19 @@ export function genChildren(
 
     /**
      * 获取节点规范化类型，返回一个 number 0、1、2，不是重点， 不重要
+     * 0:不需要标准化
+     * 1:需要简单的标准化(可能是1级深嵌套数组)
+     * 2:需要完全标准化
      */
     const normalizationType = checkSkip
-      ? getNormalizationType(children, state.maybeComponent)
+      ? getNormalizationType(
+          children /**子节点 */,
+          state.maybeComponent /**判断是否是组件 */
+        ) /**如果children.length==0 就返回0，如果如果有for属性存在或者tag等于template或者是slot 则问真就返回1，如果是组件则返回2 */
       : 0;
     /**
      * 函数，生成代码的一个函数
+     * genNode根据node.type 属性不同调用不同的方法,得到不同的虚拟dom渲染方法
      */
     const gen = altGenNode || genNode;
 
@@ -786,27 +864,48 @@ export function genChildren(
 // 0: no normalization needed
 // 1: simple normalization needed (possible 1-level deep nested array)
 // 2: full normalization needed
+
+/**
+ * 确定子数组所需的标准化。
+ * 0:不需要标准化
+ * 1:需要简单的标准化(可能是1级深嵌套数组)
+ * 2:需要完全标准化
+ * 如果children.length==0 就返回0，如果如果有for属性存在或者tag等于template或者是slot 则问真就返回1，如果是组件则返回2
+ * @param {*} children
+ * @param {*} maybeComponent
+ * @returns
+ */
 function getNormalizationType(
   children: Array<ASTNode>,
   maybeComponent: (el: ASTElement) => boolean
 ): number {
   let res = 0;
+  /**循环子节点 */
   for (let i = 0; i < children.length; i++) {
     const el: ASTNode = children[i];
     if (el.type !== 1) {
+      /**如果是真是dom则跳过循环 */
       continue;
     }
+    /**如果有for属性存在或者tag等于template或者是slot 则问为真 */
     if (
       needsNormalization(el) ||
       (el.ifConditions &&
-        el.ifConditions.some((c) => needsNormalization(c.block)))
+        el.ifConditions.some((c) =>
+          /**判断数组中是否存在满足条件的项，只要有一项满足条件，就会返回true。 */ needsNormalization(
+            c.block
+          )
+        ))
     ) {
       res = 2;
       break;
     }
     if (
-      maybeComponent(el) ||
-      (el.ifConditions && el.ifConditions.some((c) => maybeComponent(c.block)))
+      maybeComponent(el) /**判断是否是组件 */ ||
+      (el.ifConditions &&
+        el.ifConditions.some((c) =>
+          maybeComponent(c.block)
+        )) /**判断数组中是否存在满足条件的项，只要有一项满足条件，就会返回true。 */
     ) {
       res = 1;
     }
@@ -814,12 +913,17 @@ function getNormalizationType(
   return res;
 }
 
+/**
+ * 如果for属性存在或者tag等于template或者是slot 则为真
+ * @param {*} el
+ * @returns
+ */
 function needsNormalization(el: ASTElement): boolean {
   return el.for !== undefined || el.tag === "template" || el.tag === "slot";
 }
 
 /**
- *
+ * 根据node.type 属性不同调用不同的方法
  * @param {*} node
  * @param {*} state
  * @returns
@@ -835,7 +939,7 @@ function genNode(node: ASTNode, state: CodegenState): string {
 }
 
 /**
- *
+ * 返回虚拟dom vonde渲染调用的函数
  * @param {*} text
  * @returns
  */
@@ -848,7 +952,7 @@ export function genText(text: ASTText | ASTExpression): string {
 }
 
 /**
- *
+ * 返回虚拟dom vonde渲染调用的函数
  * @param {*} comment
  * @returns
  */
@@ -976,6 +1080,14 @@ function generateValue(value) {
 }
 
 // #3895, #4268
+/**
+ * \u2028	 	行分隔符	行结束符
+ * \u2029	 	段落分隔符	行结束符
+ *  这个编码为2028的字符为行分隔符，会被浏览器理解为换行，而在Javascript的字符串表达式中是不允许换行的，从而导致错误。
+ *  把特殊字符转义替换即可，代码如下所示：str = str.Replace("\u2028", "\\u2028");
+ * @param {*} text
+ * @returns
+ */
 function transformSpecialNewlines(text: string): string {
   return text.replace(/\u2028/g, "\\u2028").replace(/\u2029/g, "\\u2029");
 }
