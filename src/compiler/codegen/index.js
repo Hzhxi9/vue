@@ -123,6 +123,7 @@ export function generate(
       ? "null"
       : genElement(ast, state)
     : '_c("div")';
+
   return {
     /**with 绑定js的this 缩写，动态节点的渲染函数 */
     render: `with(this){return ${code}}`,
