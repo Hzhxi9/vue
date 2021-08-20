@@ -1,74 +1,68 @@
 /* @flow */
 
-import VNode from './vnode'
-import { resolveConstructorOptions } from 'core/instance/init'
-import { queueActivatedComponent } from 'core/observer/scheduler'
-import { createFunctionalComponent } from './create-functional-component'
+import VNode from "./vnode";
+import { resolveConstructorOptions } from "core/instance/init";
+import { queueActivatedComponent } from "core/observer/scheduler";
+import { createFunctionalComponent } from "./create-functional-component";
 
-import {
-  warn,
-  isDef,
-  isUndef,
-  isTrue,
-  isObject
-} from '../util/index'
+import { warn, isDef, isUndef, isTrue, isObject } from "../util/index";
 
 import {
   resolveAsyncComponent,
   createAsyncPlaceholder,
-  extractPropsFromVNodeData
-} from './helpers/index'
+  extractPropsFromVNodeData,
+} from "./helpers/index";
 
 import {
   callHook,
   activeInstance,
   updateChildComponent,
   activateChildComponent,
-  deactivateChildComponent
-} from '../instance/lifecycle'
+  deactivateChildComponent,
+} from "../instance/lifecycle";
 
 import {
   isRecyclableComponent,
-  renderRecyclableComponentTemplate
-} from 'weex/runtime/recycle-list/render-component-template'
+  renderRecyclableComponentTemplate,
+} from "weex/runtime/recycle-list/render-component-template";
 
 // inline hooks to be invoked on component VNodes during patch
 const componentVNodeHooks = {
-  init (vnode: VNodeWithData, hydrating: boolean): ?boolean {
+  init(vnode: VNodeWithData, hydrating: boolean): ?boolean {
     if (
       vnode.componentInstance &&
       !vnode.componentInstance._isDestroyed &&
       vnode.data.keepAlive
     ) {
       // kept-alive components, treat as a patch
-      const mountedNode: any = vnode // work around flow
-      componentVNodeHooks.prepatch(mountedNode, mountedNode)
+      const mountedNode: any = vnode; // work around flow
+      componentVNodeHooks.prepatch(mountedNode, mountedNode);
     } else {
-      const child = vnode.componentInstance = createComponentInstanceForVnode(
+      const child = (vnode.componentInstance = createComponentInstanceForVnode(
         vnode,
         activeInstance
-      )
-      child.$mount(hydrating ? vnode.elm : undefined, hydrating)
+      ));
+      child.$mount(hydrating ? vnode.elm : undefined, hydrating);
     }
   },
 
-  prepatch (oldVnode: MountedComponentVNode, vnode: MountedComponentVNode) {
-    const options = vnode.componentOptions
-    const child = vnode.componentInstance = oldVnode.componentInstance
+  prepatch(oldVnode: MountedComponentVNode, vnode: MountedComponentVNode) {
+    const options = vnode.componentOptions;
+    const child = (vnode.componentInstance = oldVnode.componentInstance);
     updateChildComponent(
       child,
       options.propsData, // updated props
       options.listeners, // updated listeners
       vnode, // new parent vnode
       options.children // new children
-    )
+    );
   },
 
-  insert (vnode: MountedComponentVNode) {
-    const { context, componentInstance } = vnode
+  insert(vnode: MountedComponentVNode) {
+    const { context, componentInstance } = vnode;
     if (!componentInstance._isMounted) {
-      componentInstance._isMounted = true
-      callHook(componentInstance, 'mounted')
+      componentInstance._isMounted = true;
+      callHook(componentInstance, "mounted");
     }
     if (vnode.data.keepAlive) {
       if (context._isMounted) {
@@ -77,135 +71,191 @@ const componentVNodeHooks = {
         // change, so directly walking the tree here may call activated hooks
         // on incorrect children. Instead we push them into a queue which will
         // be processed after the whole patch process ended.
-        queueActivatedComponent(componentInstance)
+        queueActivatedComponent(componentInstance);
       } else {
-        activateChildComponent(componentInstance, true /* direct */)
+        activateChildComponent(componentInstance, true /* direct */);
       }
     }
   },
 
-  destroy (vnode: MountedComponentVNode) {
-    const { componentInstance } = vnode
+  destroy(vnode: MountedComponentVNode) {
+    const { componentInstance } = vnode;
     if (!componentInstance._isDestroyed) {
       if (!vnode.data.keepAlive) {
-        componentInstance.$destroy()
+        componentInstance.$destroy();
       } else {
-        deactivateChildComponent(componentInstance, true /* direct */)
+        deactivateChildComponent(componentInstance, true /* direct */);
       }
     }
-  }
-}
+  },
+};
 
-const hooksToMerge = Object.keys(componentVNodeHooks)
+const hooksToMerge = Object.keys(componentVNodeHooks);
 
-export function createComponent (
+/**
+ * 创建组件的 VNode，
+ *     1、函数式组件通过执行其 render 方法生成组件的 VNode
+ *     2、普通组件通过 new VNode() 生成其 VNode，但是普通组件有一个重要操作是在 data.hook 对象上设置了四个钩子函数，
+ *        分别是 init、prepatch、insert、destroy，在组件的 patch 阶段会被调用，
+ *        比如 init 方法，调用时会进入子组件实例的创建挂载阶段，直到完成渲染
+ * @param {*} Ctor 组件构造函数
+ * @param {*} data 属性组成的 JSON 字符串
+ * @param {*} context 上下文
+ * @param {*} children 子节点数组
+ * @param {*} tag 标签名
+ * @returns
+ */
+export function createComponent(
   Ctor: Class<Component> | Function | Object | void,
   data: ?VNodeData,
   context: Component,
   children: ?Array<VNode>,
   tag?: string
 ): VNode | Array<VNode> | void {
+  /**组件构造函数不存在，直接结束 */
   if (isUndef(Ctor)) {
-    return
+    return;
   }
 
-  const baseCtor = context.$options._base
+  /** Vue.extend */
+  const baseCtor = context.$options._base;
 
-  // plain options object: turn it into a constructor
+  /**
+   * plain options object: turn it into a constructor
+   * 当 Ctor 为配置对象时，通过 Vue.extend 将其转为构造函数
+   */
   if (isObject(Ctor)) {
-    Ctor = baseCtor.extend(Ctor)
+    Ctor = baseCtor.extend(Ctor);
   }
 
-  // if at this stage it's not a constructor or an async component factory,
-  // reject.
-  if (typeof Ctor !== 'function') {
-    if (process.env.NODE_ENV !== 'production') {
-      warn(`Invalid Component definition: ${String(Ctor)}`, context)
+  /**
+   * 如果到这个为止，Ctor 仍然不是一个函数，则表示这是一个无效的组件定义
+   * if at this stage it's not a constructor or an async component factory,reject.
+   */
+  if (typeof Ctor !== "function") {
+    if (process.env.NODE_ENV !== "production") {
+      warn(`Invalid Component definition: ${String(Ctor)}`, context);
     }
-    return
+    return;
   }
 
-  // async component
-  let asyncFactory
+  // async component 异步组件
+  let asyncFactory;
   if (isUndef(Ctor.cid)) {
-    asyncFactory = Ctor
-    Ctor = resolveAsyncComponent(asyncFactory, baseCtor)
+    asyncFactory = Ctor;
+    Ctor = resolveAsyncComponent(asyncFactory, baseCtor);
     if (Ctor === undefined) {
+      /**为异步组件返回一个占位符节点，组件被渲染为注释节点，但保留了节点的所有原始信息，这些信息将用于异步服务器渲染 和 hydration */
       // return a placeholder node for async component, which is rendered
       // as a comment node but preserves all the raw information for the node.
       // the information will be used for async server-rendering and hydration.
-      return createAsyncPlaceholder(
-        asyncFactory,
-        data,
-        context,
-        children,
-        tag
-      )
+      return createAsyncPlaceholder(asyncFactory, data, context, children, tag);
     }
   }
 
-  data = data || {}
+  /**节点的属性 JSON 字符串 */
+  data = data || {};
 
-  // resolve constructor options in case global mixins are applied after
-  // component constructor creation
-  resolveConstructorOptions(Ctor)
+  /**
+   * 这里其实就是组件做选项合并的地方，即编译器将组件编译为渲染函数，渲染时执行 render 函数，然后执行其中的 _c，就会走到这里了
+   * 解析构造函数选项，并合基类选项，以防止在组件构造函数创建后应用全局混入
+   * resolve constructor options in case global mixins are applied after
+   * component constructor creation
+   */
+  resolveConstructorOptions(Ctor);
 
-  // transform component v-model data into props & events
+  /**
+   * 将组件的 v-model 的信息（值和回调）转换为 data.attrs 对象的属性、值和 data.on 对象上的事件、回调
+   * transform component v-model data into props & events
+   */
   if (isDef(data.model)) {
-    transformModel(Ctor.options, data)
+    transformModel(Ctor.options, data);
   }
 
-  // extract props
-  const propsData = extractPropsFromVNodeData(data, Ctor, tag)
+  /**
+   * extract props
+   * 提取 props 数据，得到 propsData 对象，propsData[key] = val
+   * 以组件 props 配置中的属性为 key，父组件中对应的数据为 value
+   */
+  const propsData = extractPropsFromVNodeData(data, Ctor, tag);
 
-  // functional component
+  /**
+   * functional component
+   * 函数式组件
+   */
   if (isTrue(Ctor.options.functional)) {
-    return createFunctionalComponent(Ctor, propsData, data, context, children)
+    /**
+     * 执行函数式组件的 render 函数生成组件的 VNode，做了以下 3 件事：
+     *  1、设置组件的 props 对象
+     *  2、设置函数式组件的渲染上下文，传递给函数式组件的 render 函数
+     *  3、调用函数式组件的 render 函数生成 vnode
+     */
+    return createFunctionalComponent(Ctor, propsData, data, context, children);
   }
 
-  // extract listeners, since these needs to be treated as
-  // child component listeners instead of DOM listeners
-  const listeners = data.on
-  // replace with listeners with .native modifier
-  // so it gets processed during parent component patch.
-  data.on = data.nativeOn
+  /**
+   * 获取事件监听器对象 data.on，因为这些监听器需要作为子组件监听器处理，而不是 DOM 监听器
+   * extract listeners, since these needs to be treated as
+   * child component listeners instead of DOM listeners
+   */
+  const listeners = data.on;
+
+  /**
+   * 将带有 .native 修饰符的事件对象赋值给 data.on
+   * replace with listeners with .native modifier
+   * so it gets processed during parent component patch.
+   */
+  data.on = data.nativeOn;
 
   if (isTrue(Ctor.options.abstract)) {
-    // abstract components do not keep anything
-    // other than props & listeners & slot
-
     // work around flow
-    const slot = data.slot
-    data = {}
+    /**
+     * 如果是抽象组件，则值保留 props、listeners 和 slot
+     * abstract components do not keep anything
+     * other than props & listeners & slot
+     */
+    const slot = data.slot;
+    data = {};
     if (slot) {
-      data.slot = slot
+      data.slot = slot;
     }
   }
 
-  // install component management hooks onto the placeholder node
-  installComponentHooks(data)
+  /**
+   * 在组件的 data 对象上设置 hook 对象，
+   * hook 对象增加四个属性，init、prepatch、insert、destroy，
+   * 负责组件的创建、更新、销毁，这些方法在组件的 patch 阶段会被调用
+   * install component management hooks onto the placeholder node
+   */
+  installComponentHooks(data);
 
   // return a placeholder vnode
-  const name = Ctor.options.name || tag
+  const name = Ctor.options.name || tag;
+
+  /**实例化组件的 VNode，对于普通组件的标签名会比较特殊，vue-component-${cid}-${name} */
   const vnode = new VNode(
-    `vue-component-${Ctor.cid}${name ? `-${name}` : ''}`,
-    data, undefined, undefined, undefined, context,
+    `vue-component-${Ctor.cid}${name ? `-${name}` : ""}`,
+    data,
+    undefined,
+    undefined,
+    undefined,
+    context,
     { Ctor, propsData, listeners, tag, children },
     asyncFactory
-  )
+  );
 
   // Weex specific: invoke recycle-list optimized @render function for
   // extracting cell-slot template.
   // https://github.com/Hanks10100/weex-native-directive/tree/master/component
   /* istanbul ignore if */
   if (__WEEX__ && isRecyclableComponent(vnode)) {
-    return renderRecyclableComponentTemplate(vnode)
+    return renderRecyclableComponentTemplate(vnode);
   }
 
-  return vnode
+  return vnode;
 }
 
-export function createComponentInstanceForVnode (
+export function createComponentInstanceForVnode(
   // we know it's MountedComponentVNode but flow doesn't
   vnode: any,
   // activeInstance in lifecycle state
@@ -214,57 +264,57 @@ export function createComponentInstanceForVnode (
   const options: InternalComponentOptions = {
     _isComponent: true,
     _parentVnode: vnode,
-    parent
-  }
+    parent,
+  };
   // check inline-template render functions
-  const inlineTemplate = vnode.data.inlineTemplate
+  const inlineTemplate = vnode.data.inlineTemplate;
   if (isDef(inlineTemplate)) {
-    options.render = inlineTemplate.render
-    options.staticRenderFns = inlineTemplate.staticRenderFns
+    options.render = inlineTemplate.render;
+    options.staticRenderFns = inlineTemplate.staticRenderFns;
   }
-  return new vnode.componentOptions.Ctor(options)
+  return new vnode.componentOptions.Ctor(options);
 }
 
-function installComponentHooks (data: VNodeData) {
-  const hooks = data.hook || (data.hook = {})
+function installComponentHooks(data: VNodeData) {
+  const hooks = data.hook || (data.hook = {});
   for (let i = 0; i < hooksToMerge.length; i++) {
-    const key = hooksToMerge[i]
-    const existing = hooks[key]
-    const toMerge = componentVNodeHooks[key]
+    const key = hooksToMerge[i];
+    const existing = hooks[key];
+    const toMerge = componentVNodeHooks[key];
     if (existing !== toMerge && !(existing && existing._merged)) {
-      hooks[key] = existing ? mergeHook(toMerge, existing) : toMerge
+      hooks[key] = existing ? mergeHook(toMerge, existing) : toMerge;
     }
   }
 }
 
-function mergeHook (f1: any, f2: any): Function {
+function mergeHook(f1: any, f2: any): Function {
   const merged = (a, b) => {
     // flow complains about extra args which is why we use any
-    f1(a, b)
-    f2(a, b)
-  }
-  merged._merged = true
-  return merged
+    f1(a, b);
+    f2(a, b);
+  };
+  merged._merged = true;
+  return merged;
 }
 
 // transform component v-model info (value and callback) into
 // prop and event handler respectively.
-function transformModel (options, data: any) {
-  const prop = (options.model && options.model.prop) || 'value'
-  const event = (options.model && options.model.event) || 'input'
-  ;(data.attrs || (data.attrs = {}))[prop] = data.model.value
-  const on = data.on || (data.on = {})
-  const existing = on[event]
-  const callback = data.model.callback
+function transformModel(options, data: any) {
+  const prop = (options.model && options.model.prop) || "value";
+  const event = (options.model && options.model.event) || "input";
+  (data.attrs || (data.attrs = {}))[prop] = data.model.value;
+  const on = data.on || (data.on = {});
+  const existing = on[event];
+  const callback = data.model.callback;
   if (isDef(existing)) {
     if (
       Array.isArray(existing)
         ? existing.indexOf(callback) === -1
         : existing !== callback
     ) {
-      on[event] = [callback].concat(existing)
+      on[event] = [callback].concat(existing);
     }
   } else {
-    on[event] = callback
+    on[event] = callback;
   }
 }

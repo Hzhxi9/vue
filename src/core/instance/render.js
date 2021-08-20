@@ -28,7 +28,17 @@ export function initRender(vm: Component) {
   // so that we get proper render context inside it.
   // args order: tag, data, children, normalizationType, alwaysNormalize
   // internal version is used by render functions compiled from templates
+
+  /**
+   * 定义 _c，它是 createElement 的一个柯里化方法
+   * @param {*} a 标签名
+   * @param {*} b 属性的JSON字符串
+   * @param {*} c 子节点数组
+   * @param {*} d 节点的规范化类型
+   * @returns VNode or Array<VNode>
+   */
   vm._c = (a, b, c, d) => createElement(vm, a, b, c, d, false);
+
   // normalization is always applied for the public version, used in
   // user-written render functions.
   vm.$createElement = (a, b, c, d) => createElement(vm, a, b, c, d, true);
