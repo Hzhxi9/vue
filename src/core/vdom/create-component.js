@@ -297,15 +297,31 @@ function mergeHook(f1: any, f2: any): Function {
   return merged;
 }
 
-// transform component v-model info (value and callback) into
-// prop and event handler respectively.
+/**
+ * 将组件的 v-model 的信息（值和回调）转换为 data.attrs 对象的属性、值和 data.on 对象上的事件、回调
+ * transform component v-model info (value and callback) into
+ * prop and event handler respectively.
+ * @param {*} options
+ * @param {*} data
+ */
 function transformModel(options, data: any) {
+  /**model 的属性和事件，默认为 value 和 input */
   const prop = (options.model && options.model.prop) || "value";
   const event = (options.model && options.model.event) || "input";
+
+  /** 在 data.attrs 对象上存储 v-model 的值 */
   (data.attrs || (data.attrs = {}))[prop] = data.model.value;
+
+  /**在 data.on 对象上存储 v-model 的事件 */
   const on = data.on || (data.on = {});
+
+  /**已存在的事件回调函数 */
   const existing = on[event];
+
+  /**v-model 中事件对应的回调函数 */
   const callback = data.model.callback;
+
+  /**合并回调函数 */
   if (isDef(existing)) {
     if (
       Array.isArray(existing)
