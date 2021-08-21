@@ -17,6 +17,18 @@ import {
   validateProp
 } from '../util/index'
 
+/**
+ * 
+ *  
+ *   
+ *   
+ * 
+ * @param {*} data
+ * @param {*} props 
+ * @param {*} children 
+ * @param {*} parent 
+ * @param {*} Ctor 
+ */
 export function FunctionalRenderContext (
   data: VNodeData,
   props: Object,
@@ -91,6 +103,20 @@ export function FunctionalRenderContext (
 
 installRenderHelpers(FunctionalRenderContext.prototype)
 
+
+/**
+ * 执行函数式组件的render函数生成组件的VNode， 做以下三件事
+ *      1. 设置组件的props对象
+ *      2. 设置函数式组件的渲染上下文，传递给函数式组件的render函数
+ *      3. 调用函数式组件的render函数生成VNode
+ * 
+ * @param {*} Ctor 组件的构造函数
+ * @param {*} propsData 额外的props对象
+ * @param {*} data 节点属性组成的JSON字符串
+ * @param {*} contextVm 上下文
+ * @param {*} children 子节点数据
+ * @returns VNode or Array<VNode>
+ */
 export function createFunctionalComponent (
   Ctor: Class<Component>,
   propsData: ?Object,
@@ -98,18 +124,36 @@ export function createFunctionalComponent (
   contextVm: Component,
   children: ?Array<VNode>
 ): VNode | Array<VNode> | void {
+  /**组件配置项 */
   const options = Ctor.options
+
+  /**获取props对象 */
   const props = {}
+
+  /**组件本身的props选项 */
   const propOptions = options.props
+
+  /**设置函数式组件的props对象 */
   if (isDef(propOptions)) {
+    /**
+     * 说明该函数式组件本身提供了props选项
+     * 则将props.key的值设置为组件上传递下来的对应key的值
+     */
     for (const key in propOptions) {
       props[key] = validateProp(key, propOptions, propsData || emptyObject)
     }
   } else {
+    /**
+     * 当前函数式组件没有提供props选项
+     * 则将组件上的attribute自动解析为props
+     */
     if (isDef(data.attrs)) mergeProps(props, data.attrs)
     if (isDef(data.props)) mergeProps(props, data.props)
   }
 
+  /**
+   * 实例化函数式组件的渲染上下文
+   */
   const renderContext = new FunctionalRenderContext(
     data,
     props,
@@ -118,8 +162,15 @@ export function createFunctionalComponent (
     Ctor
   )
 
+  /**
+   * 调用render函数，生成VNode，并给render函数传递_c 和渲染上下文
+   */
   const vnode = options.render.call(null, renderContext._c, renderContext)
 
+  /**
+   * 在最后生成VNode对象上加一些标记，
+   * 表示给VNode是一个函数式组件生成的，最后返回VNode
+   */
   if (vnode instanceof VNode) {
     return cloneAndMarkFunctionalResult(vnode, data, renderContext.parent, options, renderContext)
   } else if (Array.isArray(vnode)) {
