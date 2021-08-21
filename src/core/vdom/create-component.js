@@ -65,8 +65,8 @@ const componentVNodeHooks = {
 
   /**
    * 更新VNode，用新的VNode配置更新旧的VNode上的各种属性
-   * @param {*} oldVnode 
-   * @param {*} vnode 
+   * @param {*} oldVnode
+   * @param {*} vnode
    */
   prepatch(oldVnode: MountedComponentVNode, vnode: MountedComponentVNode) {
     /**
@@ -89,10 +89,10 @@ const componentVNodeHooks = {
       options.children // new children
     );
   },
-  
+
   /**
    * 执行组件的mounted声明周期钩子
-   * @param {*} vnode 
+   * @param {*} vnode
    */
   insert(vnode: MountedComponentVNode) {
     const { context, componentInstance } = vnode;
@@ -121,7 +121,7 @@ const componentVNodeHooks = {
    * 销毁组件
    *    1. 如果组件被keep-alive组件包裹，则使用组件失或， 不销毁组件实例，从而缓存组件的状态
    *    2. 如果组件没有被keep-alive包裹，则直接调用实例的$destroy方法销毁
-   * @param {*} vnode 
+   * @param {*} vnode
    */
   destroy(vnode: MountedComponentVNode) {
     /**
@@ -174,7 +174,10 @@ export function createComponent(
     return;
   }
 
-  /** Vue.extend */
+  /**
+   *  Vue.extend
+   *  用来标识扩展所有普通对象的基构造函数
+   */
   const baseCtor = context.$options._base;
 
   /**
@@ -198,8 +201,12 @@ export function createComponent(
 
   // async component 异步组件
   let asyncFactory;
+
+  /**cid: 唯一标识符 */
   if (isUndef(Ctor.cid)) {
     asyncFactory = Ctor;
+
+    /**解决异步组件，更新组件数据 */
     Ctor = resolveAsyncComponent(asyncFactory, baseCtor);
     if (Ctor === undefined) {
       /**为异步组件返回一个占位符节点，组件被渲染为注释节点，但保留了节点的所有原始信息，这些信息将用于异步服务器渲染 和 hydration */
@@ -282,7 +289,7 @@ export function createComponent(
   /**
    * 走到这里， 说明当前组件是一个普通的自定义组件(不是函数式组件)
    * 在data.hook上安装了一些内置钩子
-   * 
+   *
    * 在组件的 data 对象上设置 hook 对象，
    * hook 对象增加四个属性，init、prepatch、insert、destroy，
    * 负责组件的创建、更新、销毁，这些方法在组件的 patch 阶段会被调用
@@ -318,9 +325,9 @@ export function createComponent(
 
 /**
  * new vnode.componentOptions.Ctor(options) => 得到Vue组件实例
- * @param {*} vnode 
- * @param {*} parent 
- * @returns 
+ * @param {*} vnode
+ * @param {*} parent
+ * @returns
  */
 export function createComponentInstanceForVnode(
   // we know it's MountedComponentVNode but flow doesn't
@@ -401,11 +408,11 @@ function mergeHook(f1: any, f2: any): Function {
  * 将组件的 v-model 的信息（值和回调）转换为 data.attrs 对象的属性、值和 data.on 对象上的事件、回调
  * transform component v-model info (value and callback) into
  * prop and event handler respectively.
- * 
- * 
+ *
+ *
  * v-model => value, input
  * 转换v-model, 得到
- * data.attrs[props] = val, 
+ * data.attrs[props] = val,
  * data.on[eventName] = [cb]
  * @param {*} options
  * @param {*} data
@@ -422,11 +429,10 @@ function transformModel(options, data: any) {
   /** 在 data.attrs 对象上存储 v-model 的值 */
   (data.attrs || (data.attrs = {}))[prop] = data.model.value;
 
-  /**在 data.on 对象上存储 v-model 的事件 */
-
   /**
+   * 在 data.on 对象上存储 v-model 的事件
    * 处理事件，结果为data.on = {eventName: [cb1, cb2, ...] }
-   */
+   **/
   const on = data.on || (data.on = {});
 
   /**已存在的事件回调函数 */

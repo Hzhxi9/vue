@@ -2066,15 +2066,24 @@ if (process.env.NODE_ENV !== 'production') {
     }
   };
 
+  /**
+   * 出事代理监听
+   */
   initProxy = function initProxy (vm) {
     if (hasProxy) {
-      // determine which proxy handler to use
+      // determine which proxy handler to use 确定使用哪个代理处理程序
+
+      /**获取vm中的参数 */
       var options = vm.$options;
+      /**render渲染， 如果是渲染，并且含有_withStrpped */
       var handlers = options.render && options.render._withStripped
-        ? getHandler
-        : hasHandler;
+        ? getHandler /**获取值 */
+        : hasHandler /**判断内部函数， 这样vue中模板就可以使用内置函数 */;
+
+      /**实例话代理对象， 只是这里添加了警告日志而已 */
       vm._renderProxy = new Proxy(vm, handlers);
     } else {
+      /**如果不能代理， 直接赋值 */
       vm._renderProxy = vm;
     }
   };

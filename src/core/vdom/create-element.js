@@ -25,11 +25,11 @@ const ALWAYS_NORMALIZE = 2;
 
 /**
  * 生成组件或普通标签的 VNode，一个包装函数，不用管
- * @param {*} context
- * @param {*} tag
- * @param {*} data
- * @param {*} children
- * @param {*} normalizationType
+ * @param {*} context vm Vue实例对象
+ * @param {*} tag 标签
+ * @param {*} data 标签数据， 包括属性，class， style， 指令等
+ * @param {*} children 子节点
+ * @param {*} normalizationType 标准化类型
  * @param {*} alwaysNormalize
  * @returns
  */
@@ -41,12 +41,16 @@ export function createElement(
   normalizationType: any,
   alwaysNormalize: boolean
 ): VNode | Array<VNode> {
+  /**
+   * 如果数据是数组或者 数据类型是string， number， symbol， boolean
+   */
   if (Array.isArray(data) || isPrimitive(data)) {
     normalizationType = children;
     children = data;
     data = undefined;
   }
   if (isTrue(alwaysNormalize)) {
+    /**ALWAYS_NORMALIZE: 2 */
     normalizationType = ALWAYS_NORMALIZE;
   }
   /**执行 _createElement 方法创建组件的 VNode */
@@ -75,7 +79,12 @@ export function _createElement(
   normalizationType?: number
 ): VNode | Array<VNode> {
   if (isDef(data) && isDef((data: any).__ob__)) {
-    /**属性不能是一个响应式对象 */
+    /**
+     * 属性不能是一个响应式对象
+     *
+     * 原因：data在VNode渲染过程中可能会被改变
+     * 这样会触发检测， 导致不符合预期结果
+     **/
     process.env.NODE_ENV !== "production" &&
       warn(
         `Avoid using observed data object as vnode data: ${JSON.stringify(
@@ -129,19 +138,23 @@ export function _createElement(
    */
   if (Array.isArray(children) && typeof children[0] === "function") {
     data = data || {};
+    /**获取插槽 */
     data.scopedSlots = { default: children[0] };
     children.length = 0;
   }
 
   /**
+   *
    * 将子元素进行标准化处理
+   * 根据normalizationType的值， 选择不同的处理方法
    */
   if (normalizationType === ALWAYS_NORMALIZE) {
+    /**2，创建一个规范的子节点 */
     children = normalizeChildren(children);
   } else if (normalizationType === SIMPLE_NORMALIZE) {
+    /**1，把所有子节点的数组，子孙连接到一个数组 */
     children = simpleNormalizeChildren(children);
   }
-
 
   /**==================重点===================== */
   let vnode, ns;
@@ -179,12 +192,12 @@ export function _createElement(
        * 直接实例化一个 VNode
        */
       vnode = new VNode(
-        config.parsePlatformTagName(tag),
-        data,
-        children,
-        undefined,
-        undefined,
-        context
+        config.parsePlatformTagName(tag) /**返回相同的值，当前tag的标签名字 */,
+        data /**属性数据 */,
+        children /**子节点 */,
+        undefined /**文本 */,
+        undefined /**当前节点的DOM */,
+        context /**Vue实例化对象 */
       );
     } else if (
       (!data || !data.pre) &&
@@ -222,19 +235,39 @@ export function _createElement(
    * 返回组件的 VNode
    */
   if (Array.isArray(vnode)) {
+    /**vnode为数组 */
     return vnode;
   } else if (isDef(vnode)) {
+    /**vnode有定义 */
+
+    /**
+     * 如果ns有定义标签名
+     * 如果namespace，就应用下namespace，然后返回vnode
+     * 检查vnode.tag === 'foreignObject'是否相等， 并且修改ns值与force标识
+     */
     if (isDef(ns)) applyNS(vnode, ns);
+
+    /**
+     * 注册深绑定
+     */
     if (isDef(data)) registerDeepBindings(data);
     return vnode;
   } else {
+    /**返回一个空节点 */
     return createEmptyVNode();
   }
 }
 
+/**
+ * 检查vnode.tag === 'foreignObject'是否相等， 并且修改ns值与force标识
+ * @param {*} vnode 
+ * @param {*} ns 
+ * @param {*} force 
+ */
 function applyNS(vnode, ns, force) {
   vnode.ns = ns;
   if (vnode.tag === "foreignObject") {
+    /**SVG */
     // use default namespace inside foreignObject
     ns = undefined;
     force = true;

@@ -16,13 +16,24 @@ import VNode, { createEmptyVNode } from "../vdom/vnode";
 
 import { isUpdatingChildComponent } from "./lifecycle";
 
+/**
+ * 初始化渲染
+ * @param {*} vm Vue实例 
+ */
 export function initRender(vm: Component) {
+  /**定义vnode属性 */
   vm._vnode = null; // the root of the child tree
+  
   vm._staticTrees = null; // v-once cached trees
   const options = vm.$options;
   const parentVnode = (vm.$vnode = options._parentVnode); // the placeholder node in parent tree
+ 
+  /**this 上下文 */
   const renderContext = parentVnode && parentVnode.context;
+
+  /**判断children 有没有分发式插槽，并且过滤空的插槽，收集插槽 */
   vm.$slots = resolveSlots(options._renderChildren, renderContext);
+
   vm.$scopedSlots = emptyObject;
   
   // bind the createElement fn to this instance
@@ -69,6 +80,9 @@ export function initRender(vm: Component) {
       true
     );
   } else {
+    /**
+     * 通过defineProperty 方法去通知notify()订阅者 subscribers 有新值修改
+     */
     defineReactive(
       vm,
       "$attrs",
@@ -103,6 +117,10 @@ export function renderMixin(Vue: Class<Component>) {
   installRenderHelpers(Vue.prototype);
 
   Vue.prototype.$nextTick = function (fn: Function) {
+    /**
+     * 为callbacks 收集队列cb函数
+     * 并且根据pending 状态是否要触发callback队列函数
+     */
     return nextTick(fn, this);
   };
 
@@ -145,6 +163,9 @@ export function renderMixin(Vue: Class<Component>) {
       // separately from one another. Nested component's render fns are called
       // when parent component is patched.
       currentRenderingInstance = vm;
+
+      
+
       /**
        * 执行render 函数得到 组件的VNode
        */

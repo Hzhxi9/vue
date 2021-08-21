@@ -19,9 +19,9 @@ import {
  *      }
  *    }
  * }
- * 
+ *
  * 提取props，得到res[key] = val
- * 
+ *
  * 以props配置中的属性为key,父组件中对应的数据为value
  * 当父组件中数据更新时，触发响应式更新，重新执行render，生成新的VNode，又走到这里
  * 这样子组件中相应的数据就会被更新
@@ -54,8 +54,8 @@ export function extractPropsFromVNodeData(
    * 以组件props配置中的属性为key， 父组件传递下来的值为value
    * 当父组件中数据更新时， 触发响应式更新，重新执行render，生成新的VNode，又走到这里
    * 这样子组件中相应的数据就会被更新
-   * 
-   * 
+   *
+   *
    * res[propsKey] = data.xx.[key]
    */
   const res = {};
@@ -97,12 +97,13 @@ export function extractPropsFromVNodeData(
 
 /**
  * 得到res[key] = val
- * @param {*} res 
- * @param {*} hash 
- * @param {*} key 
- * @param {*} altKey 
- * @param {*} preserve 
- * @returns 
+ * 检查key和altKey 在hash属性对象中有没有， 如果有则赋值给res对象
+ * @param {*} res 需要添加值的对象
+ * @param {*} hash 属性对象
+ * @param {*} key 原始key
+ * @param {*} altKey 转换后的key，连字符key
+ * @param {*} preserve 是否要删除hash对象中的属性或者方法
+ * @returns
  */
 function checkProp(
   res: Object,
@@ -111,18 +112,19 @@ function checkProp(
   altKey: string,
   preserve: boolean
 ): boolean {
+  /**hash属性存在 */
   if (isDef(hash)) {
     /**
      * 判断hash(props/attrs)对象中是否存在key或altKey
      * 存在则设置给res => res[key] = hash[key]
      */
     if (hasOwn(hash, key)) {
-
       /**
        * 比如
        * res[msg] = data.attrs[msg] or data.props[msg]
        */
       res[key] = hash[key];
+      /**preserve不存在的时候则在hash对象中删除该key属性或者方法 */
       if (!preserve) {
         delete hash[key];
       }

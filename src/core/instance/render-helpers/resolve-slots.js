@@ -4,19 +4,31 @@ import type VNode from 'core/vdom/vnode'
 
 /**
  * Runtime helper for resolving raw children VNodes into a slot object.
+ * 
+ * 判断children 有没有分发式插槽 并且过滤掉空的插槽,并且收集插槽
  */
 export function resolveSlots (
   children: ?Array<VNode>,
   context: ?Component
 ): { [key: string]: Array<VNode> } {
+  /**如果没有子节点， 则返回一个空对象 */
   if (!children || !children.length) {
     return {}
   }
   const slots = {}
+
+  /**循环子节点 */
   for (let i = 0, l = children.length; i < l; i++) {
+    /**获取单个节点 */
     const child = children[i]
+
+    /**获取子节点数据 */
     const data = child.data
+
     // remove slot attribute if the node is resolved as a Vue slot node
+    /**
+     * 如果节点被解析为Vue槽节点， 则删除slot属性，slot分发属性
+     */
     if (data && data.attrs && data.attrs.slot) {
       delete data.attrs.slot
     }

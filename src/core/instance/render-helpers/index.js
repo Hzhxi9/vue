@@ -26,7 +26,7 @@ export function installRenderHelpers(target: any) {
    */
   target._o = markOnce;
   /**
-   * 将值转换为数字， 内部是parseFloat方式实现的
+   * 将值转换为数字， 内部是parseFloat方式实现的，如果失败则返回字符串
    */
   target._n = toNumber;
   /**
@@ -39,11 +39,13 @@ export function installRenderHelpers(target: any) {
    **/
   target._l = renderList;
   /**
-   * 插槽<slot />
+   * 用于呈现插槽<slot>的运行时帮助函数，创建虚拟slot VNode
    */
   target._t = renderSlot;
   /**
-   * 判断两个值是否相等,类似于 ==
+   * 判断两个值是否相等,类似于 ==，
+   * 检测a 和 b的数据类型，是否是不是数组或者对象，对象的key长度一样即可，数组长度一样即可
+   * 或者arr数组中的对象，或者对象数组是否和val相等
    */
   target._q = looseEqual;
   /**
@@ -58,10 +60,17 @@ export function installRenderHelpers(target: any) {
    */
   target._m = renderStatic;
   /**
-   * 解析filter
+   * 解析filter过滤器
    */
   target._f = resolveFilter;
+  /**
+   * 检查两个key是否相等， 如果不相等返回true，相等返回false
+   */
   target._k = checkKeyCodes;
+  /**
+   * 用于将v-bind="object"合并到VNode的数据中的运行时帮助函数
+   * 检查value是否是对象，并且为value添加update事件
+   */
   target._b = bindObjectProps;
   /**
    * 为文本节点创建 VNode
@@ -75,6 +84,9 @@ export function installRenderHelpers(target: any) {
    * 作用域插槽
    */
   target._u = resolveScopedSlots;
+  /**
+   * 判断value是否是对象，并且为数据data.on合并到value.on事件
+   */
   target._g = bindObjectListeners;
   target._d = bindDynamicKeys;
   target._p = prependModifier;

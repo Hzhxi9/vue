@@ -195,9 +195,15 @@ export const capitalize = cached((str: string): string => {
 
 /**
  * Hyphenate a camelCase string.
+ * \B是非单词分界符，即可以查出是否包含某个字
+ * 如“ABCDEFGHIJK”中是否包含“BCDEFGHIJK”这个字。
  */
 const hyphenateRE = /\B([A-Z])/g;
 export const hyphenate = cached((str: string): string => {
+  /**
+   * 大写字母，加完减号又转成小写，比如把驼峰 aBc 变成了 a-bc
+   * 匹配大写字母并且两面不是空白的替换成'-' + '字母'在全部转换为小写
+   */
   return str.replace(hyphenateRE, "-$1").toLowerCase();
 });
 

@@ -27,6 +27,15 @@ function ensureCtor (comp: any, base) {
     : comp
 }
 
+/**
+ * 创建一个简单的占位符，一个节点
+ * @param {*} factory 工厂函数
+ * @param {*} data 数据
+ * @param {*} context 上下文
+ * @param {*} children 子节点
+ * @param {*} tag 标签
+ * @returns 
+ */
 export function createAsyncPlaceholder (
   factory: Function,
   data: ?VNodeData,
@@ -34,20 +43,31 @@ export function createAsyncPlaceholder (
   children: ?Array<VNode>,
   tag: ?string
 ): VNode {
+  /**创建一个空节点 */
   const node = createEmptyVNode()
+
   node.asyncFactory = factory
+  /**异步工厂 */
   node.asyncMeta = { data, context, children, tag }
   return node
 }
 
+/**
+ * 解析异步组件， 更新数据
+ * @param {*} factory 函数工厂
+ * @param {*} baseCtor 构造函数或者Vue
+ * @returns 
+ */
 export function resolveAsyncComponent (
   factory: Function,
   baseCtor: Class<Component>
 ): Class<Component> | void {
+  /**如果有错误，则返回错误信息 */
   if (isTrue(factory.error) && isDef(factory.errorComp)) {
     return factory.errorComp
   }
 
+  /**成功状态 */
   if (isDef(factory.resolved)) {
     return factory.resolved
   }
@@ -58,6 +78,7 @@ export function resolveAsyncComponent (
     factory.owners.push(owner)
   }
 
+  /**等待状态 */
   if (isTrue(factory.loading) && isDef(factory.loadingComp)) {
     return factory.loadingComp
   }

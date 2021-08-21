@@ -463,6 +463,13 @@ export function mergeOptions(
  * Resolve an asset.
  * This function is used because child instances need access
  * to assets defined in its ancestor chain.
+ * 检测指令是否在 组件对象上面 ,返回注册指令或者组建的对象
+ * 包括检查directives ， filters ，components
+ * @param {*} options 参数
+ * @param {*} type 类型类型：directives、filters、component
+ * @param {*} id 指令的key属性
+ * @param {*} warnMissing 警告信息 true
+ * @returns
  */
 export function resolveAsset(
   options: Object,
@@ -475,16 +482,34 @@ export function resolveAsset(
     return;
   }
   const assets = options[type];
-  // check local registration variations first
+
+  /**
+   * check local registration variations first
+   * 首先检查本地注册的变化，检查id是否是assets实例话的属性或者方法
+   */
   if (hasOwn(assets, id)) return assets[id];
+
+  /**可以让连字符的属性变为驼峰， v-model => vModel */
   const camelizedId = camelize(id);
+
+  /**检查camelizedId是否是assets 实例化的属性或者方法 */
   if (hasOwn(assets, camelizedId)) return assets[camelizedId];
+
+  /**将首字母变为大写VModel */
   const PascalCaseId = capitalize(camelizedId);
+
+  /**检查PascalCaseId是否是assets 实例化的属性或者方法 */
   if (hasOwn(assets, PascalCaseId)) return assets[PascalCaseId];
+
   // fallback to prototype chain
+  /**回到原型链 */
   const res = assets[id] || assets[camelizedId] || assets[PascalCaseId];
+
+  /*如果检查不到id，开发环境报警告 */
   if (process.env.NODE_ENV !== "production" && warnMissing && !res) {
     warn("Failed to resolve " + type.slice(0, -1) + ": " + id, options);
   }
+
+  /**返回注册指令或者构建的对象 */
   return res;
 }
