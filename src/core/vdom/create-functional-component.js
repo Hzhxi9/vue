@@ -106,9 +106,9 @@ installRenderHelpers(FunctionalRenderContext.prototype)
 
 /**
  * 执行函数式组件的render函数生成组件的VNode， 做以下三件事
- *      1. 设置组件的props对象
+ *      1. 解析设置组件的props对象
  *      2. 设置函数式组件的渲染上下文，传递给函数式组件的render函数
- *      3. 调用函数式组件的render函数生成VNode
+ *      3. 调用函数式组件的render函数生成VNode，然后返回
  * 
  * @param {*} Ctor 组件的构造函数
  * @param {*} propsData 额外的props对象
@@ -136,6 +136,10 @@ export function createFunctionalComponent (
   /**设置函数式组件的props对象 */
   if (isDef(propOptions)) {
     /**
+     * 显示提供了props配置
+     * 遍历props配置， 从propsData对象中获取指定属性的值
+     * props[key] = propsData[key]
+     * 
      * 说明该函数式组件本身提供了props选项
      * 则将props.key的值设置为组件上传递下来的对应key的值
      */

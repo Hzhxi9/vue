@@ -24,7 +24,7 @@ const ALWAYS_NORMALIZE = 2;
 // without getting yelled at by flow
 
 /**
- * 生成组件或普通标签的 vnode，一个包装函数，不用管
+ * 生成组件或普通标签的 VNode，一个包装函数，不用管
  * @param {*} context
  * @param {*} tag
  * @param {*} data
@@ -54,7 +54,7 @@ export function createElement(
 }
 
 /**
- * 生成 vnode
+ * 生成VNode
  * 1. 平台保留标签和未知元素执行 new Vnode() 生成 vnode
  * 2. 组件执行 createComponent 生成 vnode
  *    2.1 函数式组件执行自己的 render 函数生成 VNode
@@ -90,6 +90,12 @@ export function _createElement(
   if (isDef(data) && isDef(data.is)) {
     tag = data.is;
   }
+
+  /**
+   * 标签名不存在
+   * 动态组件<component :is="false"></component>
+   * 返回一个空节点VNode
+   */
   if (!tag) {
     /**
      *  in case of component :is set to falsy value
@@ -126,6 +132,7 @@ export function _createElement(
     data.scopedSlots = { default: children[0] };
     children.length = 0;
   }
+
   /**
    * 将子元素进行标准化处理
    */
@@ -134,6 +141,7 @@ export function _createElement(
   } else if (normalizationType === SIMPLE_NORMALIZE) {
     children = simpleNormalizeChildren(children);
   }
+
 
   /**==================重点===================== */
   let vnode, ns;
@@ -151,7 +159,7 @@ export function _createElement(
     if (config.isReservedTag(tag)) {
       /**
        * platform built-in elements
-       * tag 是平台原生标签
+       * tag 是平台原生标签(原声标签)
        */
       if (
         process.env.NODE_ENV !== "production" &&
@@ -168,7 +176,7 @@ export function _createElement(
         );
       }
       /**
-       * 实例化一个 VNode
+       * 直接实例化一个 VNode
        */
       vnode = new VNode(
         config.parsePlatformTagName(tag),
@@ -184,6 +192,7 @@ export function _createElement(
     ) {
       /**
        * component
+       * 处理组件
        * tag 是一个自定义组件
        * 在 this.$options.components 对象中找到指定标签名称的组件构造函数
        * 创建组件的 VNode，函数式组件直接执行其 render 函数生成 VNode，
@@ -197,6 +206,7 @@ export function _createElement(
        * check at runtime because it may get assigned a namespace when its
        * parent normalizes children
        * 不知名的一个标签，但也生成 VNode，因为考虑到在运行时可能会给一个合适的名字空间
+       * 在运行时在进行检查，可能会分配一个合适的命名空间
        */
       vnode = new VNode(tag, data, children, undefined, undefined, context);
     }

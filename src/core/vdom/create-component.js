@@ -47,6 +47,7 @@ const componentVNodeHooks = {
     } else {
       /**
        * 创建组件实例
+       * 非keep-alive，或者子组件初始化时走这里
        * 即new vnode.componentOptions.Ctor(options) => 得到Vue组件实例
        */
       const child = (vnode.componentInstance = createComponentInstanceForVnode(
@@ -213,6 +214,7 @@ export function createComponent(
   data = data || {};
 
   /**
+   * 子组件做选项合并的地方
    * 这里其实就是组件做选项合并的地方，即编译器将组件编译为渲染函数，渲染时执行 render 函数，然后执行其中的 _c，就会走到这里了
    * 解析构造函数选项，并合基类选项，以防止在组件构造函数创建后应用全局混入
    * resolve constructor options in case global mixins are applied after
@@ -278,6 +280,9 @@ export function createComponent(
   }
 
   /**
+   * 走到这里， 说明当前组件是一个普通的自定义组件(不是函数式组件)
+   * 在data.hook上安装了一些内置钩子
+   * 
    * 在组件的 data 对象上设置 hook 对象，
    * hook 对象增加四个属性，init、prepatch、insert、destroy，
    * 负责组件的创建、更新、销毁，这些方法在组件的 patch 阶段会被调用
@@ -337,7 +342,10 @@ export function createComponentInstanceForVnode(
     options.render = inlineTemplate.render;
     options.staticRenderFns = inlineTemplate.staticRenderFns;
   }
-  /**new VueComponent(options) => Vue实例 */
+  /**
+   * new 组件构造函数， 得到组件实例
+   * new VueComponent(options) => Vue实例
+   **/
   return new vnode.componentOptions.Ctor(options);
 }
 
@@ -348,6 +356,9 @@ export function createComponentInstanceForVnode(
  * install component management hooks onto the placeholder node
  */
 function installComponentHooks(data: VNodeData) {
+  /**
+   * 定义data.hook对象
+   */
   const hooks = data.hook || (data.hook = {});
   /**
    * 遍历hookToMerge数组
@@ -355,15 +366,15 @@ function installComponentHooks(data: VNodeData) {
    */
   for (let i = 0; i < hooksToMerge.length; i++) {
     /**
-     * 比如key = init
+     * 获取key，比如key = init
      */
     const key = hooksToMerge[i];
     /**
-     * 从data.hook对象中获取key对应的方法
+     * 获取用户传递的init方法， 从data.hook对象中获取key对应的方法
      */
     const existing = hooks[key];
     /**
-     * componentVNodeHooks对象中key对象的方法
+     * componentVNodeHooks对象中key对象的方法，内置的init方法
      */
     const toMerge = componentVNodeHooks[key];
 
@@ -390,11 +401,21 @@ function mergeHook(f1: any, f2: any): Function {
  * 将组件的 v-model 的信息（值和回调）转换为 data.attrs 对象的属性、值和 data.on 对象上的事件、回调
  * transform component v-model info (value and callback) into
  * prop and event handler respectively.
+ * 
+ * 
+ * v-model => value, input
+ * 转换v-model, 得到
+ * data.attrs[props] = val, 
+ * data.on[eventName] = [cb]
  * @param {*} options
  * @param {*} data
  */
 function transformModel(options, data: any) {
   /**model 的属性和事件，默认为 value 和 input */
+
+  /**
+   * 处理属性值， 在data.attrs[props] = data.model.val
+   */
   const prop = (options.model && options.model.prop) || "value";
   const event = (options.model && options.model.event) || "input";
 
@@ -402,6 +423,10 @@ function transformModel(options, data: any) {
   (data.attrs || (data.attrs = {}))[prop] = data.model.value;
 
   /**在 data.on 对象上存储 v-model 的事件 */
+
+  /**
+   * 处理事件，结果为data.on = {eventName: [cb1, cb2, ...] }
+   */
   const on = data.on || (data.on = {});
 
   /**已存在的事件回调函数 */

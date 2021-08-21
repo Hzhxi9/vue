@@ -26,7 +26,7 @@ export function installRenderHelpers(target: any) {
    */
   target._o = markOnce;
   /**
-   * 将值转换为数字
+   * 将值转换为数字， 内部是parseFloat方式实现的
    */
   target._n = toNumber;
   /**
@@ -38,9 +38,12 @@ export function installRenderHelpers(target: any) {
    * 运行时渲染 v-for 列表的帮助函数，循环遍历 val 值，依次为每一项执行 render 方法生成 VNode，最终返回一个 VNode 数组
    **/
   target._l = renderList;
+  /**
+   * 插槽<slot />
+   */
   target._t = renderSlot;
   /**
-   * 判断两个值是否相等
+   * 判断两个值是否相等,类似于 ==
    */
   target._q = looseEqual;
   /**
@@ -54,6 +57,9 @@ export function installRenderHelpers(target: any) {
    *   2、为静态树的 VNode 打静态标记
    */
   target._m = renderStatic;
+  /**
+   * 解析filter
+   */
   target._f = resolveFilter;
   target._k = checkKeyCodes;
   target._b = bindObjectProps;
@@ -65,6 +71,9 @@ export function installRenderHelpers(target: any) {
    * 为空节点创建 VNode
    */
   target._e = createEmptyVNode;
+  /**
+   * 作用域插槽
+   */
   target._u = resolveScopedSlots;
   target._g = bindObjectListeners;
   target._d = bindDynamicKeys;

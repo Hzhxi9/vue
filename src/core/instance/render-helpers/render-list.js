@@ -5,11 +5,15 @@ import { isObject, isDef, hasSymbol } from "core/util/index";
 /**
  * Runtime helper for rendering v-for lists.
  * 运行时渲染 v-for 列表的帮助函数，循环遍历 val 值，依次为每一项执行 render 方法生成 VNode，最终返回一个 VNode 数组
+ * _l(arr, function(value, key, idx){ return _c(tag, data, children) })
+ * 
+ * 原理就是一个for循环，为可迭代对象中的每一个元素执行一次render函数，生成一个VNode，最终返回一个VNode数组
  * @param {*} val
  * @param {*} render
  * @returns
  */
-export function renderList(
+export function 
+renderList(
   val: any,
   render: (val: any, keyOrIndex: string | number, index?: number) => VNode
 ): ?Array<VNode> {
@@ -22,7 +26,10 @@ export function renderList(
       ret[i] = render(val[i], i);
     }
   } else if (typeof val === "number") {
-    /** val 为一个数值，则遍历 0 - val 的所有数字 */
+    /** 
+     * val 为一个数值，则遍历 0 - val 的所有数字
+     * v-for = "n in 10"
+     **/
 
     ret = new Array(val);
     for (i = 0; i < val; i++) {

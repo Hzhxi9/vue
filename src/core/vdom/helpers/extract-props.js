@@ -11,6 +11,14 @@ import {
 
 /**
  * <comp :msg="hello vue"></comp>
+ * {
+ *    props: {
+ *      msg: {
+ *        type: String,
+ *        default: 'hello'
+ *      }
+ *    }
+ * }
  * 
  * 提取props，得到res[key] = val
  * 
@@ -46,6 +54,9 @@ export function extractPropsFromVNodeData(
    * 以组件props配置中的属性为key， 父组件传递下来的值为value
    * 当父组件中数据更新时， 触发响应式更新，重新执行render，生成新的VNode，又走到这里
    * 这样子组件中相应的数据就会被更新
+   * 
+   * 
+   * res[propsKey] = data.xx.[key]
    */
   const res = {};
   const { attrs, props } = data;
@@ -73,6 +84,10 @@ export function extractPropsFromVNodeData(
           );
         }
       }
+
+      /**
+       * 从组件属性对象上获取组件props指定属性的值
+       */
       checkProp(res, props, key, altKey, true) ||
         checkProp(res, attrs, key, altKey, false);
     }
@@ -102,6 +117,11 @@ function checkProp(
      * 存在则设置给res => res[key] = hash[key]
      */
     if (hasOwn(hash, key)) {
+
+      /**
+       * 比如
+       * res[msg] = data.attrs[msg] or data.props[msg]
+       */
       res[key] = hash[key];
       if (!preserve) {
         delete hash[key];
