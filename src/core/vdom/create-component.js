@@ -39,7 +39,7 @@ const componentVNodeHooks = {
       vnode.data.keepAlive
     ) {
       /**
-       * 被keep-alive包裹的组件
+       * 被keep-alive包裹的组件，触发更新虚拟比较
        * kept-alive components, treat as a patch
        */
       const mountedNode: any = vnode; // work around flow

@@ -229,6 +229,15 @@ export function createFunctionalComponent(
   }
 }
 
+/**
+ * 克隆并标记函数结果
+ * @param {*} vnode VNode 虚拟DOM
+ * @param {*} data 属性数据
+ * @param {*} contextVm vm
+ * @param {*} options 扩展函数
+ * @param {*} renderContext 
+ * @returns 
+ */
 function cloneAndMarkFunctionalResult(
   vnode,
   data,
@@ -252,6 +261,11 @@ function cloneAndMarkFunctionalResult(
   return clone;
 }
 
+/**
+ * 拷贝合并props属性，并且把form的key由连字符写法变为驼峰写法
+ * @param {*} to 
+ * @param {*} from 
+ */
 function mergeProps(to, from) {
   for (const key in from) {
     to[camelize(key)] = from[key];
