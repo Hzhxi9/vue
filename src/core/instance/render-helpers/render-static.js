@@ -3,7 +3,7 @@
 /**
  * Runtime helper for rendering static trees.
  * 运行时负责生成静态树的 VNode 的帮助程序，完成了以下两件事
- *    1、执行 staticRenderFns 数组中指定下标的渲染函数（静态树的渲染函数），生成静态树的 VNode 并缓存，下次在渲染时从缓存中直接读取（isInFor 必须为 true）
+ *    1、执行 staticRenderFns 数组中指定下标的渲染函数（静态树的渲染函数），生成静态树的 VNode 并缓存，下次在渲染时从缓存中直接读取（isInFor 必须为 ffalse
  *    2、为静态树的 VNode 打静态标记
  * 
  *  _m(idx, true or '')
