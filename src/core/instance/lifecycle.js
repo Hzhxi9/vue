@@ -64,9 +64,15 @@ export function lifecycleMixin(Vue: Class<Component>) {
    */
   Vue.prototype._update = function (vnode: VNode, hydrating?: boolean) {
     const vm: Component = this;
+
+    /**页面挂载点， 真实元素 */
     const prevEl = vm.$el;
+
+    /**旧VNode */
     const prevVnode = vm._vnode;
     const restoreActiveInstance = setActiveInstance(vm);
+
+    /**新VNode */
     vm._vnode = vnode;
     // Vue.prototype.__patch__ is injected in entry points
     // based on the rendering backend used.
@@ -74,12 +80,14 @@ export function lifecycleMixin(Vue: Class<Component>) {
       /**
        * initial render 初次渲染，即初始化页面时走这里
        * patch 阶段， patch、diff算法
+       *
+       * 旧 VNode 不存在，表示首次渲染，即初始化页面时走这里
        */
       vm.$el = vm.__patch__(vm.$el, vnode, hydrating, false /* removeOnly */);
     } else {
       /**
        * updates 更新阶段，响应式数据更新时，即更新页面时走这里
-       *
+       * 响应式数据更新时，即更新页面时走这里
        */
       vm.$el = vm.__patch__(prevVnode, vnode);
     }
@@ -244,6 +252,8 @@ export function mountComponent(
       /**
        * 执行_update进入更新阶段
        * 首先执行_render， 将组件变成VNode
+       *
+       * 执行 vm._render() 函数，得到 VNode，并将 VNode 传递给 _update 方法，接下来就该到 patch 阶段了
        */
       vm._update(vm._render(), hydrating);
     };
