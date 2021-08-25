@@ -1123,6 +1123,10 @@ export function createPatchFunction(backend) {
       if (isDef((i = data.hook)) && isDef((i = i.init)))
         i(vnode, true /* hydrating */);
       if (isDef((i = vnode.componentInstance))) {
+        /**
+         * 初始化组建，如果没有tag标签则去更新真实dom的属性，如果有tag标签，则注册或者删除ref 然后为insertedVnodeQueue.push(vnode);
+         * 确保调用插入钩子如果vnode.data.pendingInsert为反正则也为insertedVnodeQueue插入缓存 vnode.data.pendingInsert
+         */
         // child component. it should have hydrated its own tree.
         initComponent(vnode, insertedVnodeQueue);
         return true;
