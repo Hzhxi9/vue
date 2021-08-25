@@ -40,12 +40,22 @@ function createOnceHandler(event, fn) {
   };
 }
 
+/**
+ * 更新组件事件
+ * @param {*} vm 
+ * @param {*} listeners 新的事件队列
+ * @param {*} oldListeners 旧的事件队列
+ */
 export function updateComponentListeners(
   vm: Component,
   listeners: Object,
   oldListeners: ?Object
 ) {
   target = vm;
+  /**
+   * 更新数据源
+   * 并且为新的值添加函数， 旧的值删除函数等
+   */
   updateListeners(
     listeners,
     oldListeners || {},
